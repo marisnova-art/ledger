@@ -5,10 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0C0D0B">
 <title>LEDGER</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" data-static>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%230C0D0B'/%3E%3Crect x='5' y='5' width='54' height='54' rx='12' fill='%23D4FF3A'/%3E%3Cg stroke='%23131A00' stroke-width='5.5' stroke-linecap='round'%3E%3Cpath d='M17 46h30'/%3E%3Cpath d='M23 38V27'/%3E%3Cpath d='M32 38V17'/%3E%3Cpath d='M41 38v-7'/%3E%3C/g%3E%3C/svg%3E">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%230C0D0B'/%3E%3Crect x='5' y='5' width='54' height='54' rx='12' fill='%23D4FF3A'/%3E%3Cg stroke='%23131A00' stroke-width='5.5' stroke-linecap='round'%3E%3Cpath d='M17 46h30'/%3E%3Cpath d='M23 38V27'/%3E%3Cpath d='M32 38V17'/%3E%3Cpath d='M41 38v-7'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="LEDGER">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="application-name" content="LEDGER">
+<meta name="description" content="개인·사업자를 위한 다중 장부 가계부와 자금관리">
+<meta name="format-detection" content="telephone=no">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
@@ -643,6 +650,24 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.7);cursor:poi
 }
 .m-date{display:none}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.due-dot,.nav-badge,.pill.due,.due-chip em{outline:2px solid var(--exp);outline-offset:1px}}
+
+/* ---------- PWA ---------- */
+.pwa-side{display:flex;align-items:center;gap:9px;width:100%;margin-bottom:8px;padding:10px 11px;border-radius:13px;background:var(--lime-soft);color:var(--lime);font-size:12.5px;font-weight:700;line-height:1;transition:background .15s}
+.pwa-side:hover{background:color-mix(in srgb,var(--lime) 20%,transparent)}
+.pwa-side[hidden],.pwa-m[hidden]{display:none}
+.pwa-m{flex:none;width:44px;height:44px;border-radius:13px;background:var(--lime-soft);color:var(--lime);display:grid;place-items:center}
+.upd-bar{position:fixed;z-index:85;right:24px;bottom:24px;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);padding:10px 10px 10px 16px;border-radius:18px;background:var(--card2);border:1px solid var(--line2);box-shadow:0 18px 40px rgba(0,0,0,.45);font-size:14px;font-weight:600;animation:upd .3s var(--ease,ease)}
+.upd-bar[hidden]{display:none}
+.upd-bar .ic{color:var(--lime);flex:none}
+.upd-bar .btn{min-height:38px;padding:0 14px;font-size:13.5px}
+@keyframes upd{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.pwa-card .pwa-state{display:flex;flex-wrap:wrap;gap:6px}
+.pwa-card ol{margin:0;padding-left:20px;color:var(--muted);font-size:14px;line-height:1.75}
+.pwa-card ol b{color:var(--text)}
+.pwa-card .pwa-acts{display:flex;gap:8px;flex-wrap:wrap}
+@media (max-width:760px){
+  .upd-bar{left:16px;right:16px;bottom:calc(92px + env(safe-area-inset-bottom));justify-content:space-between}
+}
 </style>
 </head>
 <body>
@@ -657,15 +682,16 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.7);cursor:poi
     <button class="book-switch" id="book-switch" data-act="book-switch" title="장부 전환"></button>
     <button class="side-cta" data-act="new-tx" title="새 거래 기록 (N)"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>거래 기록하기</span></button>
     <nav id="side-nav"></nav>
-    <div class="side-foot"><button class="sync-badge" id="sync-badge" data-go="sync" title="동기화"></button>
+    <div class="side-foot"><button class="pwa-side" id="pwa-side" data-act="pwa-install" hidden title="LEDGER를 앱으로 설치"></button><button class="sync-badge" id="sync-badge" data-go="sync" title="동기화"></button>
       <div class="kbds"><kbd>N</kbd> 새 거래 &nbsp; <kbd>/</kbd> 검색<br><kbd>Esc</kbd> 창 닫기</div></div>
   </aside>
   <main class="main" id="main">
-    <div class="m-top"><button class="book-switch" id="m-book" data-act="book-switch" title="장부 전환"></button><button class="sync-badge" id="m-sync" data-go="sync" title="동기화"></button></div>
+    <div class="m-top"><button class="book-switch" id="m-book" data-act="book-switch" title="장부 전환"></button><button class="pwa-m" id="pwa-m" data-act="pwa-install" hidden title="앱으로 설치" aria-label="앱으로 설치"></button><button class="sync-badge" id="m-sync" data-go="sync" title="동기화"></button></div>
     <div id="view"></div>
   </main>
   <nav class="bottomnav" id="bottom-nav" aria-label="하단 메뉴"></nav>
 </div>
+<div class="upd-bar" id="upd-bar" role="status" hidden></div>
 <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 <div id="tip" aria-hidden="true"></div>
 <input type="file" id="import-file" accept="application/json,.json" hidden>
@@ -762,7 +788,7 @@ play:'<path d="M5 12h14M13 6l6 6-6 6"/>',skip:'<path d="M5 5l9 7-9 7zM18 5v14"/>
 cash:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 12h.01M18 12h.01"/>',
 bank:'<path d="M3 10 12 4l9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>',
 card:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
-phone:'<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/>',
+install:'<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M12 7.5v7M9 11.5l3 3 3-3M10 18.5h4"/>',share:'<path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/>',phone:'<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/>',
 spark:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
 note:'<path d="M5 4h14v12l-4 4H5z"/><path d="M15 20v-4h4"/>',
 alert:'<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
@@ -876,7 +902,7 @@ function applyTheme(id){
   const t=THEME_BY[id]||THEMES[0];const r=document.documentElement.style;
   r.setProperty('--lime',t.p);r.setProperty('--lime-2',t.p2);r.setProperty('--lime-ink',t.ink);r.setProperty('--lime-soft',hexA(t.p,.12));
   r.setProperty('--inc',t.p);r.setProperty('--exp',t.x);
-  const f=faviconSVG(t);$$('link[rel="icon"],link[rel="apple-touch-icon"]').forEach(l=>l.href=f);
+  const f=faviconSVG(t);$$('link[rel="icon"]:not([data-static])').forEach(l=>l.href=f);
 }
 bindActive();
 let storageOK=true;
@@ -2121,6 +2147,7 @@ function vData(){
   return head('데이터 관리',`현재 장부는 <b style="color:var(--text)">${esc(bk.name)}</b>이에요. 모든 장부는 이 브라우저에 저장되며, 동기화를 켜면 다른 기기와도 함께 쓰입니다.`)+
   `<div class="stor"><div><small>장부</small><b class="num">${root.books.length}개 · 거래 ${fmt(totalTx())}건</b></div><div><small>이 장부 기록 기간</small><b class="num" style="font-size:15px">${dates.length?`${shortDate(dates[0])} ~ ${shortDate(dates[dates.length-1])}`:'-'}</b></div><div><small>저장 용량</small><b class="num">${size>1048576?(size/1048576).toFixed(2)+'MB':(size/1024).toFixed(1)+'KB'}</b></div><div><small>마지막 저장</small><b class="num" style="font-size:15px">${root.savedAt?new Date(root.savedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'-'}</b></div></div>
   <div class="data-grid">
+    ${pwaCard()}
     <article class="card data-card"><div class="d-ic">${icon('download',22)}</div><h3>전체 백업 (JSON)</h3><p>모든 장부의 거래, 계좌, 자산, 카테고리, 반복 거래를 파일 하나로 받습니다. 불러오기로 그대로 복원할 수 있어요.</p><button class="btn btn-lime" data-act="backup">전체 백업 받기</button></article>
     <article class="card data-card"><div class="d-ic">${icon('book',22)}</div><h3>현재 장부만 백업</h3><p>${esc(bk.name)} 장부 하나만 파일로 받습니다. 다른 기기에서 새 장부로 추가하거나 옮길 때 편해요.</p><button class="btn" data-act="backup-book">이 장부 백업</button></article>
     <article class="card data-card"><div class="d-ic">${icon('upload',22)}</div><h3>JSON 불러오기</h3><p>전체 백업은 모든 장부를 바꾸고, 장부 하나짜리 백업(이전 버전 포함)은 새 장부로 추가하거나 현재 장부에 덮어쓸 수 있어요.</p><button class="btn" data-act="import">백업 파일 선택</button></article>
@@ -2597,11 +2624,110 @@ function mSync(){
 window.addEventListener('online',()=>{if(sync.url&&sync.anon){if(sb&&sbUser){setSb('online');sbPull(false)}else sbConnect()}});
 window.addEventListener('offline',()=>{if(sync.url&&sync.anon)setSb('offline','인터넷에 연결되면 자동으로 이어서 동기화해요')});
 
+/* ---------- PWA: 설치 · 오프라인 · 업데이트 ---------- */
+const pwa={
+  prompt:null,reg:null,waiting:null,refreshing:false,persisted:null,
+  canSW:'serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&(window.isSecureContext||location.hostname==='localhost'),
+  standalone:()=>window.matchMedia('(display-mode: standalone)').matches||window.matchMedia('(display-mode: minimal-ui)').matches||navigator.standalone===true,
+  ios:/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),
+  installedAt:(()=>{try{return +localStorage.getItem('ledger.pwa.installed')||0}catch(e){return 0}})()
+};
+function pwaPaint(){
+  const can=!!pwa.prompt&&!pwa.standalone();
+  const side=$('#pwa-side'),m=$('#pwa-m');
+  if(side){side.hidden=!can;side.innerHTML=`${icon('install',16,2.2)}<span>앱으로 설치</span>`}
+  if(m){m.hidden=!can;m.innerHTML=icon('install',20,2.2)}
+  if(current==='data'){const c=$('#pwa-card');if(c)c.outerHTML=pwaCard()}
+}
+function pwaCard(){
+  const st=pwa.standalone();
+  const pills=[];
+  pills.push(st?`<span class="pill lime">${icon('check',12,2.6)}앱으로 실행 중</span>`:`<span class="pill">브라우저에서 실행 중</span>`);
+  if(pwa.canSW)pills.push(navigator.serviceWorker.controller?`<span class="pill lime">오프라인 사용 가능</span>`:`<span class="pill">오프라인 준비 중</span>`);
+  if(pwa.persisted===true)pills.push(`<span class="pill lime">저장공간 보호됨</span>`);
+  let body,acts='';
+  if(!pwa.canSW){
+    body=`<p>앱 설치와 오프라인 실행은 <b style="color:var(--text)">https 주소</b>로 열었을 때만 쓸 수 있어요. 파일을 직접 열면(file://) 동작하지 않습니다. GitHub Pages, Netlify, Cloudflare Pages 같은 곳에 폴더째 올려 주세요.</p>`;
+  }else if(st){
+    body=`<p>홈 화면 앱으로 실행 중이에요. 인터넷이 끊겨도 기록과 조회가 되고, 연결되면 동기화가 이어집니다.</p>`;
+    acts=`<button class="btn" data-act="pwa-check">${icon('reset',17)}업데이트 확인</button>${pwa.persisted===true?'':`<button class="btn" data-act="pwa-persist">저장공간 보호</button>`}`;
+  }else if(pwa.prompt){
+    body=`<p>LEDGER를 휴대폰 홈 화면이나 PC 앱 목록에 설치합니다. 주소창 없이 전체 화면으로 열리고, 인터넷이 없어도 쓸 수 있어요.</p>`;
+    acts=`<button class="btn btn-lime" data-act="pwa-install">${icon('install',17,2.2)}앱으로 설치</button>`;
+  }else if(pwa.ios){
+    body=`<p>iPhone·iPad에서는 Safari에서 직접 추가합니다.</p><ol><li>아래쪽(또는 위쪽)의 <b>공유</b> ${icon('share',15,2)} 버튼을 누릅니다.</li><li><b>홈 화면에 추가</b>를 고릅니다.</li><li>오른쪽 위 <b>추가</b>를 누르면 끝이에요.</li></ol>`;
+  }else{
+    body=`<p>브라우저 주소창 오른쪽의 <b style="color:var(--text)">설치</b> 아이콘이나, 메뉴의 <b style="color:var(--text)">앱 설치 / 홈 화면에 추가</b>로 설치할 수 있어요. ${pwa.installedAt?'이미 설치했다면 앱 목록에서 LEDGER를 여세요.':''}</p>`;
+  }
+  return `<article class="card data-card pwa-card" id="pwa-card"><div class="d-ic">${icon('install',22)}</div><h3>앱으로 설치</h3><div class="pwa-state">${pills.join('')}</div>${body}${acts?`<div class="pwa-acts">${acts}</div>`:''}</article>`;
+}
+function pwaShowUpdate(worker){
+  pwa.waiting=worker;const bar=$('#upd-bar');if(!bar)return;
+  bar.innerHTML=`${icon('spark',18)}<span>새 버전이 준비됐어요</span><button class="btn btn-lime" data-act="pwa-update">새로고침</button><button class="icon-btn" data-act="pwa-later" aria-label="나중에" title="나중에">${icon('x',16)}</button>`;
+  bar.hidden=false;
+}
+function pwaTrack(reg){
+  if(reg.waiting&&navigator.serviceWorker.controller)pwaShowUpdate(reg.waiting);
+  reg.addEventListener('updatefound',()=>{const w=reg.installing;if(!w)return;
+    w.addEventListener('statechange',()=>{if(w.state==='installed'){if(navigator.serviceWorker.controller)pwaShowUpdate(w);else{pwaPaint()}}})});
+}
+async function pwaPersist(ask){
+  if(!navigator.storage||!navigator.storage.persisted)return;
+  try{pwa.persisted=await navigator.storage.persisted();if(!pwa.persisted&&ask)pwa.persisted=await navigator.storage.persist()}catch(e){}
+}
+async function pwaInit(){
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();pwa.prompt=e;pwaPaint()});
+  window.addEventListener('appinstalled',()=>{pwa.prompt=null;try{localStorage.setItem('ledger.pwa.installed',String(Date.now()))}catch(e){}pwaPersist(true).then(pwaPaint);toast('LEDGER를 앱으로 설치했어요')});
+  window.matchMedia('(display-mode: standalone)').addEventListener?.('change',pwaPaint);
+  await pwaPersist(pwa.standalone()||!!pwa.installedAt);
+  if(!pwa.canSW){pwaPaint();return}
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(pwa.refreshing)return;if(pwa.waiting){pwa.refreshing=true;location.reload()}else pwaPaint()});
+  try{
+    pwa.reg=await navigator.serviceWorker.register('sw.js',{scope:'./'});
+    pwaTrack(pwa.reg);
+    // 앱을 오래 켜 두거나 다시 열 때 새 버전 확인
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&pwa.reg)pwa.reg.update().catch(()=>{})});
+    setInterval(()=>{if(pwa.reg&&navigator.onLine)pwa.reg.update().catch(()=>{})},60*60*1000);
+  }catch(e){console.warn('SW 등록 실패',e)}
+  pwaPaint();
+}
+Object.assign(ACTIONS,{
+  'pwa-install':async()=>{
+    if(!pwa.prompt){go('data');return}
+    const p=pwa.prompt;pwa.prompt=null;
+    try{await p.prompt();const r=await p.userChoice;if(r&&r.outcome==='dismissed')toast('설치를 취소했어요. 데이터 관리에서 언제든 다시 설치할 수 있어요.')}catch(e){}
+    pwaPaint();
+  },
+  'pwa-update':async()=>{const w=pwa.waiting||(pwa.reg&&pwa.reg.waiting);if(!w){location.reload();return}
+    // 올리지 못한 변경이 있으면 먼저 서버에 올리고 새로고침
+    if((pendingPush||pushTimer)&&sb&&sbUser&&navigator.onLine){try{clearTimeout(pushTimer);pushTimer=null;await sbPush(false)}catch(e){}}
+    w.postMessage({type:'SKIP_WAITING'});const bar=$('#upd-bar');if(bar)bar.innerHTML=`${icon('reset',18)}<span>업데이트하는 중…</span>`},
+  'pwa-later':()=>{const bar=$('#upd-bar');if(bar)bar.hidden=true},
+  'pwa-check':async()=>{if(!pwa.reg){toast('서비스 워커가 아직 준비되지 않았어요','err');return}
+    if(!navigator.onLine){toast('인터넷에 연결된 뒤 다시 확인해 주세요','err');return}
+    try{await pwa.reg.update();if(pwa.reg.installing||pwa.reg.waiting)toast('새 버전을 받는 중이에요');else toast('최신 버전이에요')}catch(e){toast('업데이트를 확인하지 못했어요','err')}},
+  'pwa-persist':async()=>{await pwaPersist(true);pwaPaint();toast(pwa.persisted?'저장공간을 보호했어요. 브라우저가 임의로 지우지 않아요.':'브라우저가 아직 허용하지 않았어요. 앱으로 설치하면 대부분 허용됩니다.',pwa.persisted?'ok':'err')}
+});
+// 앱 바로가기(길게 누르기 메뉴)와 시작 주소 처리: ?action=new-tx / ?view=transactions
+function pwaLaunchParams(){
+  const q=new URLSearchParams(location.search);if(![...q.keys()].length)return null;
+  const action=q.get('action'),view=q.get('view');
+  const hash=view&&VIEWS[view]?'#/'+view:location.hash;
+  try{history.replaceState(null,'',location.pathname+hash)}catch(e){}
+  return action;
+}
+// 네트워크 상태 알림(동기화를 안 쓰는 경우에도 안심되도록)
+window.addEventListener('offline',()=>{if(!(sync.url&&sync.anon))toast('오프라인이에요. 기록은 이 기기에 그대로 저장돼요.')});
+
 /* ---------- boot ---------- */
 buildNav();
 if(!bootRaw||!Array.isArray(bootRaw.books))save({local:true});
+const launchAction=pwaLaunchParams();
 route();
 sbConnect();
+pwaInit();
+if(launchAction==='new-tx')setTimeout(()=>openTxModal(),60);
+else if(launchAction==='new-expense')setTimeout(()=>openTxModal(null,'expense'),60);
 </script>
 </body>
 </html>
