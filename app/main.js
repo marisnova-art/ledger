@@ -191,8 +191,8 @@ function homeView() {
   const col = isP ? 's4' : 's6';
   const tiles = heroTiles(m), mob = isMobile();
   const past = m < ym(todayStr()), tot = balancesAt(m).tot;
-  return '<section class="card hero s12 m1"><div class="hgrid"><div class="hl"><div class="card-h">' + mstep('hm', m, ym(todayStr())).replace('<span>' + m.slice(0, 4) + '년 ' + monthLabel(m), '<span class="muted">' + (past ? monthLabel(m) + ' 말 내 돈' : '지금 내 돈')) + '</div>' +
-      '<div class="num">' + won(tot) + '</div><div class="small hcap">' + (accts().length ? '계좌와 현금 잔액을 모두 더한 금액이에요' : '계좌·현금을 추가하면 잔액 합계가 보여요') + '</div>' + heroAccts(m) +
+  return '<section class="card hero s12 m1"><div class="hgrid"><div class="hl"><div class="card-h">' + mstep('hm', m, ym(todayStr())).replace('<span>' + m.slice(0, 4) + '년 ' + monthLabel(m), '<span class="muted">' + (past ? monthLabel(m) + ' 말 내 돈' : monthLabel(m) + ' 내 돈 · 오늘 기준')) + '</div>' +
+      '<div class="num">' + won(tot) + '</div><div class="small hcap">' + (accts().length ? (past ? monthLabel(m) + ' 마지막 날 ' : '오늘 ') + '계좌와 현금 잔액을 모두 더한 금액이에요' : '계좌·현금을 추가하면 잔액 합계가 보여요') + '</div>' + heroAccts(m) +
       '<div class="stats three"><div><span class="small muted lbl in"><svg viewBox="0 0 18 18"><path d="M5 9h8M9 5v8"/></svg>' + (isMobile() ? '' : monthLabel(m) + ' ') + '들어온 돈</span><span class="v">+' + won(now.inc) + '</span></div><div><span class="small muted lbl out"><svg viewBox="0 0 18 18"><path d="M5 9h8"/></svg>' + (isMobile() ? '' : monthLabel(m) + ' ') + '나간 돈</span><span class="v">−' + won(now.exp) + '</span></div><div title="지난달보다 ' + signed(diff) + '"><span class="small muted lbl ' + (diff >= 0 ? 'in' : 'out') + '"><svg viewBox="0 0 18 18">' + (diff >= 0 ? '<path d="M9 13V5M5.5 8.5L9 5l3.5 3.5"/>' : '<path d="M9 5v8M5.5 9.5L9 13l3.5-3.5"/>') + '</svg>' + (isMobile() ? '' : monthLabel(m) + ' ') + '남긴 돈</span><span class="v">' + signed(net) + '</span></div></div>' +
       heroMore(m) + '</div>' +
       (mob ? '' : '<div class="hr"><div class="htiles">' + tiles.join('') + '</div></div>') + '</div></section>' +
