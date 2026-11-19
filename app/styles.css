@@ -482,3 +482,17 @@ html, body { overscroll-behavior: none; }
 .sheet input, .sheet select, .sheet textarea { max-width: 100%; width: 100%; box-sizing: border-box; }
 .sheet input[type="month"], .sheet input[type="date"], .sheet input[type="time"] { -webkit-appearance: none; appearance: none; }
 .sheet .grid2 > * { min-width: 0; }
+/* Hero left: amount + what it means, then this month's in/out, then outlook, then real balances in their own box */
+.hero .hcap { color: color-mix(in srgb, var(--on-accent) 62%, transparent); margin-top: 6px; }
+.hero.s12 .num + .hcap + .stats { margin-top: 18px; padding-top: 16px; }
+.hero.s12 .stats { margin-top: 18px; }
+.hero.s12 .hmore { margin-top: 22px; padding-top: 18px; border-top: 1px solid color-mix(in srgb, var(--on-accent) 14%, transparent); }
+.hbal { margin-top: 18px; padding: 14px 16px; border-radius: 16px; background: color-mix(in srgb, var(--on-accent) 8%, transparent); display: flex; flex-direction: column; gap: 6px; }
+.hbal .kv b { font-weight: 400; }
+.hero.s12 .hbal .hacc { margin: 6px 0 0; }
+.hbal .hac { background: color-mix(in srgb, var(--on-accent) 8%, transparent); }
+.hero.s12 .hl .hacc { margin: 6px 0 0; }
+@media (max-width: 959px) { .hbal { padding: 12px 14px; } .hbal .hacc { flex-wrap: wrap; gap: 6px; } .hbal .hac { min-height: 34px; padding: 0 10px; } }
+.hero.s12 .hl > .hacc { margin: 14px 0 0; }
+.hero.s12 .hcap + .stats, .hero.s12 .hacc + .stats { margin-top: 20px; padding-top: 16px; }
+@media (max-width: 959px) { .hero.s12 .hl > .hacc { gap: 6px; } .hero.s12 .hl > .hacc .hac { min-height: 34px; padding: 0 10px; } .hero.s12 .stats .lbl { font-size: 12px; } }
