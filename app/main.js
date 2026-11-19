@@ -42,8 +42,8 @@ const sortTx = list => list.slice().sort((a, b) => b.date.localeCompare(a.date) 
 const mstep = (attr, m, max) => '<span class="mstep"><button data-' + attr + '="-1" aria-label="이전 달">' + icon('left') + '</button><span>' + m.slice(0, 4) + '년 ' + monthLabel(m) + '</span><button data-' + attr + '="1" aria-label="다음 달"' + (m >= max ? ' disabled' : '') + '>' + icon('right') + '</button></span>';
 
 /* ---------- charts ---------- */
-function barChart(s, W = 760, act = s.length - 1) {
-  const H = 300, L = 48, R = 16, Tp = 40, B = 34;
+function barChart(s, W = CW.bar, act = s.length - 1) {
+  const H = W < 520 ? 240 : 300, L = 48, R = 16, Tp = 40, B = 34;
   const max = Math.max(1, ...s.map(d => Math.max(d.inc, d.exp)));
   const step = [100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000].find(v => max / v <= 4) || 20000000;
   const top = Math.ceil(max / step) * step, y = v => Tp + (H - Tp - B) * (1 - v / top);
@@ -69,7 +69,8 @@ function barChart(s, W = 760, act = s.length - 1) {
     '<g transform="translate(' + Math.min(W - tw, lp[0] - tw / 2) + ' ' + ty + ')"><rect width="' + tw + '" height="26" rx="13" fill="var(--accent)"/><text x="' + tw / 2 + '" y="17.5" text-anchor="middle" font-size="13" fill="var(--on-accent)">' + tag + '</text></g>' + hits + '</svg>';
 }
 function areaChart(vals, labels) {
-  const W = 760, H = 220, L = 12, R = 12, Tp = 44, B = 30, n = vals.length;
+  CH.area = [vals, labels];
+  const W = CW.area, H = W < 520 ? 180 : 220, L = 12, R = 12, Tp = 44, B = 30, n = vals.length;
   const mn = Math.min(...vals), mx = Math.max(...vals), pad = (mx - mn) * 0.15 || Math.abs(mx) * 0.1 || 1;
   const x = i => L + (W - L - R) * i / (n - 1), y = v => Tp + (H - Tp - B) * (1 - (v - (mn - pad)) / ((mx + pad) - (mn - pad)));
   let line = 'M' + x(0) + ' ' + y(vals[0]);
@@ -331,7 +332,7 @@ function assetsView() {
     (g.acct ? [] : g.list).map(a => '<button class="row" data-asset="' + a.id + '"><span class="ic ' + (a.type === 'loan' ? 'exp' : 'inc') + '">' + icon(g.ic) + '</span><span class="mid"><div>' + esc(a.name) + '</div><div class="small muted">' + assetSub(a) + '</div></span><span class="strong' + (a.type === 'loan' ? ' down' : '') + '">' + won(signedVal(a)) + '</span>' + icon('right') + '</button>').join('')).join('');
   return '<div class="m1 s12" style="display:contents"></div>' + (isMobile() ? '<div><button class="golink" data-go="home">‹ 홈</button></div>' : '') +
     '<section class="card hero s5"><div class="card-h"><span class="muted">순자산</span><span class="tag">' + monthLabel(nowM) + ' 기준</span></div><div class="num">' + won(nw) + '</div><div class="stats three"><div><span class="small muted">가진 자산</span><span class="v">' + man(gross) + '</span></div><div><span class="small muted">대출</span><span class="v">−' + man(debt) + '</span></div><div><span class="small muted">지난달보다</span><span class="v">' + signed(d) + '</span></div></div></section>' +
-    '<section class="card chart s7"><div class="card-h"><span class="strong">순자산 추이</span><span class="small muted">최근 6개월 · 매달 말</span></div>' + areaChart(vals, months.map(monthLabel)) + '</section>' +
+    '<section class="card chart s7"><div class="card-h"><span class="strong">순자산 추이</span><span class="small muted">최근 6개월 · 매달 말</span></div>' + '<div class="abox">' + areaChart(vals, months.map(monthLabel)) + '</div>' + '</section>' +
     (assetGroups().length ? '<section class="card s12"><div class="card-h"><span class="strong">자산 구성</span><span class="small muted">대출 제외</span></div>' + assetBar() + '</section>' : '') +
     '<section class="card s12"><div class="card-h"><span class="strong">내 자산</span><span class="small muted">금액을 고치면 그날 기록으로 남아요</span></div>' + (groups || '<div class="empty">아직 적어 둔 자산이 없어요</div>') + (accts().length ? '<p class="small muted hint">계좌·현금은 거래 기록으로 잔액이 자동 계산돼요. 같은 통장을 자산에 또 적지 않아도 돼요.</p>' : '') + '<button class="btn-dash" data-addasset>' + icon('plus') + '자산 추가</button><p class="small muted hint">투자 조언은 하지 않고, 적어 주신 금액으로 기록과 추이만 보여드려요.</p></section>';
 }
@@ -395,11 +396,12 @@ function render() {
   if (focus && (focus === 'q' || focus === 'qtop')) { const el = document.getElementById(focus) || document.getElementById(focus === 'q' ? 'qtop' : 'q'); if (el) { el.focus(); try { el.setSelectionRange(sel, sel); } catch (e) {} } }
   try { localStorage.setItem('ledger.v2.book', b.id); } catch (e) {}
   onScroll();
+  fitCharts();
 }
 const go = v => { V.view = v; V.bpick = false; render(); window.scrollTo(0, 0); };
 const onScroll = () => { const t = document.querySelector('.totop'); if (t) t.classList.toggle('show', window.scrollY > 400); };
 window.addEventListener('scroll', onScroll, { passive: true });
-window.addEventListener('resize', (() => { let w = isMobile(); return () => { if (isMobile() !== w) { w = isMobile(); render(); } }; })());
+window.addEventListener('resize', (() => { let w = isMobile(), t = 0; return () => { if (isMobile() !== w) { w = isMobile(); render(); } else { clearTimeout(t); t = setTimeout(fitCharts, 150); } }; })());
 
 /* ---------- toast + safe writes ---------- */
 let toastT;
@@ -930,13 +932,20 @@ app.addEventListener('click', async e => {
   if (el('[data-trashmore]')) { V.trashN = (V.trashN || 10) + 10; render(); return; }
   if (el('[data-logout]')) { if (S.demo) { location.href = location.pathname; return; } await signOut(); location.reload(); }
 });
-const CH = { s: null, avg: null, act: -1 };
+const CH = { s: null, avg: null, act: -1, area: null };
+// Charts are drawn at their on-screen width (1 SVG unit = 1px) so their 13px labels stay 13px on every screen.
+const CW = { bar: 760, area: 760 };
+function fitCharts() {
+  const bb = document.querySelector('.chart .cbox'), ab = document.querySelector('.chart .abox');
+  if (bb && CH.s) { const w = Math.round(bb.clientWidth); if (w > 100 && Math.abs(w - CW.bar) > 4) { CW.bar = w; bb.innerHTML = barChart(CH.s, w, CH.act < 0 ? CH.s.length - 1 : CH.act); } }
+  if (ab && CH.area) { const w = Math.round(ab.clientWidth); if (w > 100 && Math.abs(w - CW.area) > 4) { CW.area = w; ab.innerHTML = areaChart(CH.area[0], CH.area[1]); } }
+}
 const chartStats = (pre, i, x) => '<div><span class="small muted">' + pre + T('in') + '</span><span class="v">' + won(i) + '</span></div><div><span class="small muted">' + pre + T('out') + '</span><span class="v">' + won(x) + '</span></div><div><span class="small muted">' + pre + T('left') + '</span><span class="v">' + signed(i - x) + '</span></div>';
 function chartFocus(i) {
   const box = document.querySelector('.chart .cbox'), st = document.querySelector('.chart .cstats');
   if (!box || !CH.s) return;
   const k = i == null ? CH.s.length - 1 : i;
-  if (k !== CH.act) { CH.act = k; box.innerHTML = barChart(CH.s, 760, k); }
+  if (k !== CH.act) { CH.act = k; box.innerHTML = barChart(CH.s, CW.bar, k); }
   if (st) st.innerHTML = i == null ? chartStats('월평균 ', CH.avg[0], CH.avg[1]) : chartStats(monthLabel(CH.s[k].m) + ' ', CH.s[k].inc, CH.s[k].exp);
 }
 function chartTip(e) {
