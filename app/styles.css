@@ -567,7 +567,7 @@ html, body { overscroll-behavior: none; }
 /* card titles: one look on every page — a tinted header band with a divider (user 2026-11-19) */
 .card { --cpy: 26px; --cpx: 26px; --cr: 24px; }
 .ct { display: inline-flex; align-items: baseline; gap: 8px; }
-.card:not(.hero) > .card-h:first-child, .card:not(.hero) > .ct:first-child, .card.score > .glow + .card-h {
+.card:not(.hero) > .card-h:first-child, .card:not(.hero) > .ct:first-child, .card.score > .glow + .card-h, .card:not(.hero) > .lv:first-child > .card-h:first-child {
   display: flex; margin: calc(-1 * var(--cpy)) calc(-1 * var(--cpx)) 4px; padding: 16px var(--cpx); min-height: 60px;
   background: color-mix(in srgb, var(--ink) 4%, transparent); border-bottom: 1px solid var(--line); border-radius: var(--cr) var(--cr) 0 0; }
 @media (max-width: 959px) { .card { --cpy: 18px; --cpx: 14px; --cr: 20px; } }
