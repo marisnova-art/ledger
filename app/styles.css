@@ -419,3 +419,12 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adj
 .dayband { margin-bottom: 6px; }
 .mband { margin-bottom: 8px; }
 @media (max-width: 959px) { .dayband { margin-top: 16px; margin-bottom: 8px; } }
+/* Mobile: hero + chart summary as three equal centered columns (user: 3rd item on its own row looked odd) */
+@media (max-width: 959px) {
+  .hero.s12 .stats.three, .chart .stats.three { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
+  .hero.s12 .stats.three > div:nth-child(3), .chart .stats.three > div:nth-child(3) { grid-column: auto; flex-direction: column; justify-content: flex-start; gap: 4px; }
+  .hero.s12 .stats > div + div { border-left: 1px solid color-mix(in srgb, var(--on-accent) 14%, transparent); }
+  .chart .cstats > div + div { border-left: 1px solid var(--line); }
+  .hero.s12 .stats .lbl { gap: 4px; }
+  .hero.s12 .stats .v, .chart .cstats .v { font-size: var(--t3); }
+}
