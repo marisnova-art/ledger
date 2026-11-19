@@ -1,8 +1,8 @@
 // LEDGER v2 — app entry: sign-in, layout (PC sidebar / mobile tab bar), views and edit sheets.
 import { CONFIG } from './config.js';
 import { S, initClient, signIn, signOut, loadAll, loadDemo, put, putMany, remove, putSnap, restoreTx, purgeTx, restoreItem, purgeItem } from './store.js';
-import { icon, esc, won, signed, man, uid, todayStr, nowTime, ym, addMonths, monthLabel, weekday, shortDate, iconForName, acctIcon, acctLabel, ACCT_TYPES } from './util.js';
-import { cur, book, bookTx, sumOf, cats, accts, recs, assets, catOf, acctOf, monthSum, monthTx, series, score, outlook, recThisMonth, dueDate, computeAlerts, dismiss, markSeen, ASSET_TYPES, assetLabel, assetIcon, signedVal, netWorthAt } from './calc.js';
+import { icon, esc, won, signed, man, uid, todayStr, nowTime, ym, addMonths, addDays, monthLabel, weekday, shortDate, iconForName, acctIcon, acctLabel, ACCT_TYPES } from './util.js';
+import { cur, book, bookTx, sumOf, cats, accts, recs, assets, catOf, acctOf, monthSum, monthTx, series, score, outlook, recThisMonth, dueDate, recDone, computeAlerts, dismiss, markSeen, ASSET_TYPES, assetLabel, assetIcon, signedVal, netWorthAt } from './calc.js';
 import { parseLine } from './ai.js';
 
 const app = document.getElementById('app');
@@ -114,25 +114,76 @@ function heroMore(m) {
   return '<div class="hmore"><div class="kv"><span class="lbl2">' + (o.past ? '남긴 비율' : '월말 예상') + '</span><b>' + (o.past ? (used == null ? '—' : (100 - used) + '%') : signed(o.end)) + '</b></div>' +
     ('<div class="ptrack" title="들어온 돈의 ' + (used || 0) + '% 사용 · 이번 달 ' + time + '% 지남"><i style="width:' + Math.min(100, used || 0) + '%"></i>' + (o.past ? '' : '<em style="left:' + time + '%"></em>') + '</div><div class="kv small"><span>' + (used == null ? '들어온 돈 없음' : used + '% 썼어요') + '</span><span>' + (o.past ? monthLabel(m) + ' 마감' : time + '% 지남') + '</span></div>') + '</div>';
 }
+// Hero tiles: small numbers with a mini chart each. PC: inside the hero card; mobile: a swipeable strip below it.
+function heroTiles(m) {
+  const t = todayStr(), isNow = m === ym(t), o = outlook(m) || {}, dim = o.dim || 30, day = o.day || dim, s = monthSum(m), pm = addMonths(m, -1);
+  const tile = (k, v, viz, extra) => '<div class="htile' + (extra || '') + '"><span class="small hk">' + k + '</span><span class="hv">' + v + '</span>' + viz + '</div>';
+  const daily = mm => { const a = new Array(31).fill(0); monthTx(mm).forEach(x => { if (x.type === 'expense') a[+x.date.slice(8) - 1] += Number(x.amount); }); return a; };
+  const cum = a => { let c = 0; return a.map(v => (c += v)); };
+  const out = [];
+  // 1. spending flow vs last month (cumulative)
+  const cn = cum(daily(m)).slice(0, isNow ? day : dim), cp = cum(daily(pm)).slice(0, dimOfM(pm));
+  const mx = Math.max(1, ...cn, ...cp), W = 220, H = 56, X = i => (i / Math.max(1, dim - 1)) * W, Y = v => H - 3 - (v / mx) * (H - 8);
+  const path = a => a.map((v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1)).join('');
+  const sameDay = cp[Math.min(cp.length, cn.length) - 1] || 0, nowV = cn[cn.length - 1] || 0, dd = nowV - sameDay;
+  out.push(tile('지출 흐름', (dd > 0 ? '지난달보다 ' + won(dd) + ' 더 씀' : dd < 0 ? '지난달보다 ' + won(-dd) + ' 덜 씀' : '지난달과 같아요'),
+    '<svg class="hviz" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><path d="' + path(cp) + '" fill="none" stroke="currentColor" stroke-opacity=".3" stroke-width="2" vector-effect="non-scaling-stroke"/><path d="' + path(cn) + '" fill="none" stroke="currentColor" stroke-width="2.5" vector-effect="non-scaling-stroke"/>' + (cn.length ? '<circle cx="' + X(cn.length - 1) + '" cy="' + Y(nowV) + '" r="3.5" fill="currentColor"/>' : '') + '</svg>'));
+  // 2. per-day money
+  const bars = (rows) => { const top = Math.max(1, ...rows.map(r => r[1])); return '<div class="hbars">' + rows.map(r => '<div class="hb"><span class="small">' + r[0] + '</span><i><b style="width:' + Math.round(r[1] / top * 100) + '%"></b></i><span class="small">' + man(r[1]) + '</span></div>').join('') + '</div>'; };
+  if (isNow) { const left = Math.max(0, o.end || 0), dl = dim - day + 1, per = Math.round(left / dl), avg = Math.round(s.exp / Math.max(1, day));
+    out.push(tile('하루 써도 되는 돈', won(per), bars([['남은 ' + dl + '일', per], ['지금 평균', avg]]))); }
+  else { const avg = Math.round(s.exp / dim), pa = Math.round(monthSum(pm).exp / dimOfM(pm));
+    out.push(tile('하루 평균 지출', won(avg), bars([[monthLabel(m), avg], [monthLabel(pm), pa]]))); }
+  // 3. upcoming payments (7 days) / past: spending by day
+  if (isNow) {
+    const days = [...Array(7)].map((_, i) => addDays(t, i)), due = [];
+    recs().filter(r => r.active !== false && r.type === 'expense').forEach(r => [m, addMonths(m, 1)].forEach(mm => { const d = dueDate(r, mm); if (d >= days[0] && d <= days[6] && !recDone(r, mm)) due.push({ r, d }); }));
+    const sum = due.reduce((a, x) => a + Number(x.r.amount || 0), 0);
+    out.push(tile('다가오는 결제 · 7일', due.length ? due.length + '건 · ' + won(sum) : '없어요', '<div class="hdays">' + days.map(d => '<span class="hd' + (due.some(x => x.d === d) ? ' on' : '') + '"><em>' + weekday(d) + '</em>' + Number(d.slice(8)) + '</span>').join('') + '</div>'));
+  } else {
+    const a = daily(m).slice(0, dim), top = Math.max(1, ...a), mi = a.indexOf(Math.max(...a));
+    out.push(tile('가장 많이 쓴 날', a[mi] ? Number(m.slice(5)) + '.' + String(mi + 1).padStart(2, '0') + ' · ' + won(a[mi]) : '없어요', '<svg class="hviz" viewBox="0 0 ' + (dim * 7) + ' 56" preserveAspectRatio="none">' + a.map((v, i) => '<rect x="' + (i * 7 + 1) + '" y="' + (56 - Math.max(2, v / top * 52)) + '" width="5" height="' + Math.max(2, v / top * 52) + '" rx="1.5" fill="currentColor" fill-opacity="' + (i === mi ? 1 : .35) + '"/>').join('') + '</svg>'));
+  }
+  // 4. top categories
+  const bc = {}; monthTx(m).forEach(x => { if (x.type === 'expense') bc[x.category_id] = (bc[x.category_id] || 0) + Number(x.amount); });
+  const rows = Object.entries(bc).sort((a, b) => b[1] - a[1]), tot = rows.reduce((a, r) => a + r[1], 0), top3 = rows.slice(0, 3), OPS = [1, .55, .3];
+  const nm = id => (catOf(id) || {}).name || '분류 없음';
+  out.push(tile('많이 쓴 분류', top3.length ? esc(nm(top3[0][0])) + ' ' + Math.round(top3[0][1] / tot * 100) + '%' : '없어요',
+    '<div class="hstack">' + top3.map((r, i) => '<b style="width:' + (r[1] / tot * 100) + '%;opacity:' + OPS[i] + '"></b>').join('') + '</div><div class="hleg small">' + top3.map((r, i) => '<span><i style="opacity:' + OPS[i] + '"></i>' + esc(nm(r[0])) + '</span>').join('') + '</div>'));
+  return out;
+}
+const dimOfM = m => new Date(Date.UTC(+m.slice(0, 4), +m.slice(5), 0)).getUTCDate();
+function scoreCard(m) {
+  const sc = score(m), ps = score(addMonths(m, -1)), d = sc.v - ps.v;
+  const weak = sc.f.slice().sort((a, b) => (a.p / a.max) - (b.p / b.max))[0], gain = weak.max - weak.p;
+  const TIP = { '저축률': '남기는 돈을 조금 늘리면', '고정 지출': '고정 지출을 줄이면', '지출 속도': '지출 속도만 조금 늦추면', '기록 습관': '기록을 더 자주 하면' };
+  const tip = gain > 0 ? TIP[weak.k] + ' 최대 ' + gain + '점 더 받을 수 있어요' : '모든 항목이 좋아요. 지금처럼만 하면 돼요';
+  return '<section class="card score s6 m9"><div class="glow"></div><div class="card-h"><span>재무 건강 점수</span><span class="small muted">' + monthLabel(m) + ' 기준</span></div>' +
+    '<div class="shead"><span class="big">' + sc.v + '</span><span class="sg"><span>' + sc.grade + '</span><span class="small ' + (d >= 0 ? 'up' : 'down') + '">' + (d > 0 ? '▲ ' + d + '점' : d < 0 ? '▼ ' + (-d) + '점' : '지난달과 같아요') + '</span></span></div>' +
+    '<div class="bar"><span class="marker" style="left:calc(' + sc.v + '% - 1px)"></span></div><div class="small muted stip">' + tip + '</div>' +
+    '<div class="facs">' + sc.f.map(f => '<div class="fac" title="' + esc(f.note) + '"><div class="fr"><span>' + f.k + '</span><span>' + f.v + '</span><span class="fst ' + f.st[1] + '">' + f.p + '/' + f.max + '</span></div><i class="fp"><b class="' + f.st[1] + '" style="width:' + Math.round(f.p / f.max * 100) + '%"></b></i></div>').join('') + '</div></section>';
+}
 function homeView() {
   const m = V.month, now = monthSum(m), prev = monthSum(addMonths(m, -1)), net = now.inc - now.exp, diff = net - (prev.inc - prev.exp), sc = score(m);
   const recent = sortTx(bookTx()), shown = recent.slice(0, V.showN), rest = recent.length - shown.length;
   const rt = recThisMonth(), alerts = computeAlerts(), isP = book().kind === 'personal';
   const nw = netWorthAt(ym(todayStr())), nwd = nw - netWorthAt(addMonths(ym(todayStr()), -1));
-  CH.avg = null; const nM = isMobile() ? 6 : 12, s6 = series(m, nM), nUsed = Math.max(1, s6.filter(d => d.inc || d.exp).length), avgI = s6.reduce((x, d) => x + d.inc, 0) / nUsed, avgE = s6.reduce((x, d) => x + d.exp, 0) / nUsed; CH.s = s6; CH.avg = [avgI, avgE]; CH.act = s6.length - 1;
+  CH.avg = null; const nM = 6, s6 = series(m, nM), nUsed = Math.max(1, s6.filter(d => d.inc || d.exp).length), avgI = s6.reduce((x, d) => x + d.inc, 0) / nUsed, avgE = s6.reduce((x, d) => x + d.exp, 0) / nUsed; CH.s = s6; CH.avg = [avgI, avgE]; CH.act = s6.length - 1;
   const col = isP ? 's4' : 's6';
-  return '<section class="card hero s6 m1"><div class="card-h">' + mstep('hm', m, ym(todayStr())).replace('<span>' + m.slice(0, 4) + '년 ' + monthLabel(m), '<span class="muted">' + monthLabel(m) + ' 남은 돈') + '</div>' +
-      '<div class="num">' + signed(net) + '</div>' + heroMore(m) + heroAccts(m) + '<div class="stats three"><div><span class="small muted lbl in"><svg viewBox="0 0 18 18"><path d="M5 9h8M9 5v8"/></svg>들어온 돈</span><span class="v">+' + won(now.inc) + '</span></div><div><span class="small muted lbl out"><svg viewBox="0 0 18 18"><path d="M5 9h8"/></svg>나간 돈</span><span class="v">−' + won(now.exp) + '</span></div><div><span class="small muted lbl ' + (diff >= 0 ? 'in' : 'out') + '"><svg viewBox="0 0 18 18">' + (diff >= 0 ? '<path d="M9 13V5M5.5 8.5L9 5l3.5 3.5"/>' : '<path d="M9 5v8M5.5 9.5L9 13l3.5-3.5"/>') + '</svg>지난달보다</span><span class="v">' + signed(diff) + '</span></div></div></section>' +
-    '<section class="card score s6 m2"><div class="glow"></div><div class="card-h"><span>재무 건강 점수</span><span class="small muted">' + monthLabel(m) + ' 기준</span></div><div class="kv"><span class="big">' + sc.v + '</span><span class="strong">' + sc.grade + '</span></div>' +
-      '<div class="facs">' + sc.f.map(f => '<div class="fac" title="' + esc(f.note) + '"><span>' + f.k + '</span><b>' + f.v + '</b><span class="fst ' + f.st[1] + '">' + f.st[0] + '</span></div>').join('') + '</div><div class="bar"><span class="marker" style="left:calc(' + sc.v + '% - 1px)"></span></div></section>' +
+  const tiles = heroTiles(m), mob = isMobile();
+  return '<section class="card hero s12 m1"><div class="hgrid"><div class="hl"><div class="card-h">' + mstep('hm', m, ym(todayStr())).replace('<span>' + m.slice(0, 4) + '년 ' + monthLabel(m), '<span class="muted">' + monthLabel(m) + ' 남은 돈') + '</div>' +
+      '<div class="num">' + signed(net) + '</div>' + heroMore(m) + (mob ? '' : heroAccts(m)) + '<div class="stats three"><div><span class="small muted lbl in"><svg viewBox="0 0 18 18"><path d="M5 9h8M9 5v8"/></svg>들어온 돈</span><span class="v">+' + won(now.inc) + '</span></div><div><span class="small muted lbl out"><svg viewBox="0 0 18 18"><path d="M5 9h8"/></svg>나간 돈</span><span class="v">−' + won(now.exp) + '</span></div><div><span class="small muted lbl ' + (diff >= 0 ? 'in' : 'out') + '"><svg viewBox="0 0 18 18">' + (diff >= 0 ? '<path d="M9 13V5M5.5 8.5L9 5l3.5 3.5"/>' : '<path d="M9 5v8M5.5 9.5L9 13l3.5-3.5"/>') + '</svg>지난달보다</span><span class="v">' + signed(diff) + '</span></div></div></div>' +
+      (mob ? '' : '<div class="hr"><div class="htiles">' + tiles.join('') + '</div></div>') + '</div></section>' +
+    (mob ? '<div class="hstrip m2">' + tiles.join('') + (accts().length ? '<div class="htile">' + heroAccts(m) + '</div>' : '') + '</div>' : '') +
     '<section class="card s12 m3"><div class="card-h"><span class="strong">최근 거래 <span class="small muted">' + recent.length + '건</span></span><button class="golink" data-go="list">전체 보기 ›</button></div><div>' + (shown.length ? shown.map(t => txRow(t, { date: true })).join('') : '<div class="empty">아직 거래가 없어요. 거래 추가로 시작해 보세요.</div>') + '</div>' + (rest > 0 ? '<button class="more" data-more>' + Math.min(10, rest) + '건 더 보기</button>' : '') + '</section>' +
     '<section class="card ' + col + ' m4"><div class="card-h"><span class="strong">이번 달 반복 거래 <span class="small muted">' + rt.filter(x => x.done).length + '/' + rt.length + ' 완료</span></span>' + '<button class="golink" data-go="settings">관리 ›</button></div>' +
       (rt.length ? rt.slice().sort((a, b) => (a.done - b.done) || a.due.localeCompare(b.due)).slice(0, 7).map(({ r, due, done }) => '<button class="row" data-rec="' + r.id + '"><span class="mid"><div>' + esc(r.name) + '</div><div class="small muted">' + shortDate(due) + ' · ' + (done ? '완료' : '예정') + '</div></span><span class="small strong ' + (r.type === 'income' ? 'up' : 'down') + '">' + won(r.amount) + '</span></button>').join('') + '' : '<div class="empty small">등록된 반복 거래가 없어요</div>') + '</section>' +
-    '<section class="card ' + col + ' m5"><div class="card-h"><span class="strong">알림 <span class="small muted">' + (alerts.length ? alerts.length + '건' : '') + '</span></span><button class="golink" data-go="alerts">전체 보기 ›</button></div>' + (alerts.length ? alerts.slice(0, 3).map(alertRow).join('') : '<div class="empty small">지금은 알릴 게 없어요</div>') + '</section>' +
+    '<section class="card ' + col + ' m5"><div class="card-h"><span class="strong">알림 <span class="small muted">' + (alerts.length ? alerts.length + '건' : '') + '</span></span><button class="golink" data-go="alerts">전체 보기 ›</button></div>' + (alerts.length ? alerts.slice(0, 5).map(a => alertRow(a, true)).join('') : '<div class="empty small">지금은 알릴 게 없어요</div>') + '</section>' +
     (isP ? '<section class="card s4 m6"><div class="card-h"><span class="strong">내 자산</span><button class="golink" data-go="assets">자산 보기 ›</button></div><div class="kv"><span class="muted">순자산</span><span class="strong">' + won(nw) + '</span></div><div class="kv small"><span class="muted">지난달보다</span><span class="' + (nwd >= 0 ? 'up' : 'down') + '">' + signed(nwd) + '</span></div>' + (assets().length ? assetBar() + '<div>' + assets().slice().sort((a, b) => Math.abs(signedVal(b)) - Math.abs(signedVal(a))).slice(0, 5).map(a => '<button class="row" data-asset="' + a.id + '"><span class="ic ' + (a.type === 'loan' ? 'exp' : 'inc') + '">' + icon(assetIcon(a.type)) + '</span><span class="mid"><div>' + esc(a.name) + '</div><div class="small muted">' + assetLabel(a.type) + '</div></span><span class="small strong' + (a.type === 'loan' ? ' down' : '') + '">' + won(signedVal(a)) + '</span></button>').join('') + '</div>' : '<div class="small muted">예금, 주식, 코인, 부동산, 대출을 적어 두면 순자산 추이를 보여드려요.</div>') + '</section>' : '') +
     '<section class="card s6 m7">' + compCard(m, 'expense') + '</section>' +
     '<section class="card s6 m8">' + compCard(m, 'income') + '</section>' +
-    '<section class="card chart s12 m9"><div class="card-h"><span class="strong">최근 ' + nM + '개월</span><span class="legend small muted"><span><i style="background:var(--accent)"></i>들어온 돈</span><span><i style="background:var(--coral)"></i>나간 돈</span><span>— 남은 돈</span></span></div>' + '<div class="cbox">' + barChart(s6, isMobile() ? 760 : 1400) + '</div>' +
+    scoreCard(m) +
+    '<section class="card chart s6 m9"><div class="card-h"><span class="strong">최근 ' + nM + '개월</span><span class="legend small muted"><span><i style="background:var(--accent)"></i>들어온 돈</span><span><i style="background:var(--coral)"></i>나간 돈</span><span>— 남은 돈</span></span></div>' + '<div class="cbox">' + barChart(s6, 760) + '</div>' +
       '<div class="stats cstats" style="margin-top:0">' + chartStats('월평균 ', avgI, avgE) + '</div></section>';
 }
 
@@ -222,9 +273,11 @@ function openAdv() {
   draw();
 }
 
-function alertRow(a) {
-  return '<div class="tx al"><span class="ic ' + (a.warn ? 'warn' : 'inc') + '">' + icon(a.ic) + '</span><span class="mid"><div' + (a.unread ? ' class="strong"' : '') + '>' + esc(a.title) + (a.unread ? '<span class="newdot" aria-label="새 알림"></span>' : '') + '</div><div class="small muted">' + esc(a.sub) + '</div></span>' +
-    '<div class="acts-al">' + (a.act ? '<button class="btn-ghost" data-aact="' + esc(a.id) + '">' + esc(a.actLabel) + '</button>' : '') + '<button class="btn-ghost" data-adone="' + esc(a.id) + '" title="확인하고 지우기">' + icon('check') + '확인</button></div></div>';
+function alertRow(a, compact) {
+  const b = (attr, ic, label, tip) => '<button class="btn-ghost' + (compact ? ' icon' : '') + '" ' + attr + ' title="' + esc(tip) + '" aria-label="' + esc(tip) + '">' + icon(ic) + (compact ? '' : esc(label)) + '</button>';
+  const tp = a.title.split(' · '), t1 = compact && tp.length > 1 ? tp[0] : a.title, s1 = compact && tp.length > 1 ? tp.slice(1).join(' · ') + ' · ' + a.sub.split(' · ')[0] : a.sub;
+  return '<div class="tx al"><span class="ic ' + (a.warn ? 'warn' : 'inc') + '">' + icon(a.ic) + '</span><span class="mid"><div>' + esc(t1) + '</div><div class="small muted">' + esc(s1) + '</div></span>' +
+    '<div class="acts-al">' + (a.act ? b('data-aact="' + esc(a.id) + '"', a.actIc || 'right', a.actLabel, a.actLabel) : '') + b('data-adone="' + esc(a.id) + '"', 'check', '확인', '확인하고 지우기') + '</div></div>';
 }
 function alertsView() {
   const all = computeAlerts(), list = all.filter(a => V.alF === 'all' || a.t === V.alF), unread = all.filter(a => a.unread);
@@ -234,7 +287,7 @@ function alertsView() {
   setTimeout(() => markSeen(all.map(a => a.id)), 1500);
   return '<section class="card s8"><div class="card-h"><span class="strong">알림 <span class="small muted">' + (unread.length ? '새 알림 ' + unread.length + '건' : all.length ? '모두 읽었어요' : '') + '</span></span></div>' +
       '<div class="pills scroll">' + T.map(([k, l]) => '<button class="pill" data-alf="' + k + '" aria-pressed="' + (V.alF === k) + '">' + l + ' <span class="muted">' + (k === 'all' ? all.length : all.filter(a => a.t === k).length) + '</span></button>').join('') + '</div>' +
-      (list.length ? Object.keys(g).sort().reverse().map(d => '<div class="dayband"><span class="dl">' + label(d) + '</span><span class="muted">' + g[d].length + '건</span></div>' + g[d].map(alertRow).join('')).join('') : '<div class="empty">지금은 알릴 게 없어요</div>') + '</section>' +
+      (list.length ? Object.keys(g).sort().reverse().map(d => '<div class="dayband"><span class="dl">' + label(d) + '</span><span class="muted">' + g[d].length + '건</span></div>' + g[d].map(a => alertRow(a)).join('')).join('') : '<div class="empty">지금은 알릴 게 없어요</div>') + '</section>' +
     '<section class="card s4" style="align-self:start"><span class="strong">알려드리는 것</span><p class="small muted hint">반복 거래 결제·입금 3일 전부터, 기록되지 않은 반복 거래, 분류별로 평소보다 많이 쓴 달, 같은 날 같은 금액(중복 의심), 3달 연속 비슷한 거래(반복 등록 제안), 반복 거래 금액이 바뀐 경우를 알려드려요.</p><p class="small muted hint">"확인"을 누르면 이 기기에서 그 알림이 사라져요.</p></section>';
 }
 
@@ -720,7 +773,7 @@ function chartFocus(i) {
   const box = document.querySelector('.chart .cbox'), st = document.querySelector('.chart .cstats');
   if (!box || !CH.s) return;
   const k = i == null ? CH.s.length - 1 : i;
-  if (k !== CH.act) { CH.act = k; box.innerHTML = barChart(CH.s, isMobile() ? 760 : 1400, k); }
+  if (k !== CH.act) { CH.act = k; box.innerHTML = barChart(CH.s, 760, k); }
   if (st) st.innerHTML = i == null ? chartStats('월평균 ', CH.avg[0], CH.avg[1]) : chartStats(monthLabel(CH.s[k].m) + ' ', CH.s[k].inc, CH.s[k].exp);
 }
 function chartTip(e) {

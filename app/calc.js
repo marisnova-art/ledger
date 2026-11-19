@@ -98,8 +98,8 @@ export function computeAlerts() {
     if (done) return;
     const diff = Math.round((new Date(due + 'T00:00:00Z') - new Date(t + 'T00:00:00Z')) / 86400000);
     const what = r.type === 'income' ? '입금' : '결제';
-    if (diff >= 0 && diff <= 3) add({ id: 'due:' + r.id + ':' + due, d: t, t: 'rec', ic: 'repeat', title: (diff === 0 ? '오늘 ' : diff === 1 ? '내일 ' : diff + '일 뒤 ') + r.name + ' ' + won(r.amount) + ' ' + what + ' 예정', sub: '반복 거래 · 매달 ' + r.day + '일', act: 'record', actLabel: '지금 기록하기', ref: r.id });
-    else if (diff < 0) add({ id: 'late:' + r.id + ':' + due, d: t, t: 'check', warn: true, ic: 'alert', title: r.name + ' ' + what + '이 아직 기록되지 않았어요', sub: '매달 ' + r.day + '일 · ' + won(r.amount), act: 'record', actLabel: '기록하기', ref: r.id });
+    if (diff >= 0 && diff <= 3) add({ id: 'due:' + r.id + ':' + due, d: t, t: 'rec', ic: 'repeat', title: r.name + ' · ' + (diff === 0 ? '오늘 ' : diff === 1 ? '내일 ' : diff + '일 뒤 ') + what, sub: won(r.amount) + ' · 매달 ' + r.day + '일', act: 'record', actLabel: '기록', actIc: 'plus', ref: r.id });
+    else if (diff < 0) add({ id: 'late:' + r.id + ':' + due, d: t, t: 'check', warn: true, ic: 'alert', title: r.name + ' · ' + what + ' 기록 안 됨', sub: won(r.amount) + ' · 매달 ' + r.day + '일', act: 'record', actLabel: '기록', actIc: 'plus', ref: r.id });
   });
   // 3. category spending well above the usual (previous 3 months average)
   const day = Number(t.slice(8)), dim = new Date(Date.UTC(+m.slice(0, 4), +m.slice(5), 0)).getUTCDate();
@@ -109,7 +109,7 @@ export function computeAlerts() {
     const avg = prev.reduce((a, b) => a + b, 0) / 3;
     if (avg > 0 && now > 10000 && now > avg * 1.3 && prev.filter(Boolean).length >= 2) {
       const pct = Math.round((now / avg - 1) * 100);
-      add({ id: 'over:' + c.id + ':' + m, d: t, t: 'odd', warn: true, ic: 'alert', title: '이번 달 ' + c.name + ' 지출이 평소보다 ' + pct + '% 많아요', sub: won(now) + ' · 지난 3달 평균 ' + won(avg) + (day < dim ? ' · 아직 ' + (dim - day) + '일 남았어요' : ''), act: 'cat', actLabel: c.name + ' 거래 보기', ref: c.id });
+      add({ id: 'over:' + c.id + ':' + m, d: t, t: 'odd', warn: true, ic: 'alert', title: c.name + ' · 평소보다 ' + pct + '% 많이 씀', sub: won(now) + ' · 3달 평균 ' + won(avg), act: 'cat', actLabel: '보기', actIc: 'search', ref: c.id });
     }
   });
   // 4. possible duplicates in the last 30 days
@@ -117,7 +117,7 @@ export function computeAlerts() {
   bookTx().filter(x => x.date >= since).forEach(x => { const k = x.date + '|' + x.type + '|' + x.amount + '|' + (x.description || ''); (groups[k] = groups[k] || []).push(x); });
   Object.values(groups).filter(g => g.length > 1).forEach(g => {
     const x = g[0];
-    add({ id: 'dup:' + g.map(y => y.id).sort().join(','), d: x.date, t: 'check', warn: true, ic: 'copy', title: '같은 날 같은 금액이 ' + g.length + '번 있어요', sub: (x.description || '거래') + ' ' + won(x.amount) + ' · 중복일 수 있어요', act: 'search', actLabel: '거래 보기', ref: x.description || '' });
+    add({ id: 'dup:' + g.map(y => y.id).sort().join(','), d: x.date, t: 'check', warn: true, ic: 'copy', title: (x.description || '거래') + ' · 같은 날 ' + g.length + '번', sub: won(x.amount) + ' · 중복일 수 있어요', act: 'search', actLabel: '보기', actIc: 'search', ref: x.description || '' });
   });
   // 5. new repeating pattern (same description 3 months in a row, similar amount, not yet recurring)
   const names = new Set(recs().map(r => r.name));
@@ -130,13 +130,13 @@ export function computeAlerts() {
     if (per.some(p => p.length !== 1)) return;
     const amts = per.map(p => Number(p[0].amount)), avg = amts.reduce((a, b) => a + b, 0) / 3;
     if (amts.some(a => Math.abs(a - avg) > avg * 0.15)) return;
-    add({ id: 'pat:' + k + ':' + m, d: t, t: 'check', ic: 'calendar', title: desc + ', 3달 연속 비슷한 금액이에요', sub: won(Math.round(avg)) + ' · 매달 ' + Number(per[0][0].date.slice(8)) + '일쯤 · 반복으로 등록할까요?', act: 'mkrec', actLabel: '반복으로 등록', ref: per[0][0].id });
+    add({ id: 'pat:' + k + ':' + m, d: t, t: 'check', ic: 'calendar', title: desc + ' · 3달째 같은 금액', sub: won(Math.round(avg)) + ' · 매달 ' + Number(per[0][0].date.slice(8)) + '일쯤', act: 'mkrec', actLabel: '반복 등록', actIc: 'repeat', ref: per[0][0].id });
   });
   // 6. recurring amount changed this month
   recs().forEach(r => {
     const x = monthTx(m).find(y => y.recurring_id === r.id); if (!x || !r.amount) return;
     const d = Number(x.amount) - Number(r.amount);
-    if (Math.abs(d) > r.amount * 0.05) add({ id: 'chg:' + r.id + ':' + m, d: x.date, t: 'rec', ic: 'repeat', title: r.name + ' 금액이 ' + (d > 0 ? won(d) + ' 늘었어요' : won(-d) + ' 줄었어요'), sub: '이번 달 ' + won(x.amount) + ' · 등록된 금액 ' + won(r.amount), act: 'search', actLabel: '거래 보기', ref: x.description || r.name });
+    if (Math.abs(d) > r.amount * 0.05) add({ id: 'chg:' + r.id + ':' + m, d: x.date, t: 'rec', ic: 'repeat', title: r.name + ' · ' + (d > 0 ? won(d) + ' 늘었어요' : won(-d) + ' 줄었어요'), sub: '이번 달 ' + won(x.amount) + ' · 등록 ' + won(r.amount), act: 'search', actLabel: '보기', actIc: 'search', ref: x.description || r.name });
   });
   return out.sort((a, b) => b.d.localeCompare(a.d));
 }
