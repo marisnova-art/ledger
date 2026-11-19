@@ -98,4 +98,6 @@ export function iconForName(name, fallback) {
   for (const [re, k] of ICON_RULES) if (re.test(name || '')) return k;
   return fallback || 'tag';
 }
-export const acctIcon = a => a.type === 'cash' ? 'cash' : a.type === 'card' ? 'card' : 'bank';
+export const ACCT_TYPES = [['bank', '입출금 통장', 'bank'], ['saving', '저축 통장', 'coin'], ['check', '체크카드', 'card'], ['card', '신용카드', 'card'], ['cash', '현금', 'cash'], ['pay', '간편결제', 'phone']];
+export const acctLabel = t => (ACCT_TYPES.find(x => x[0] === t) || [t, t || '기타'])[1];
+export const acctIcon = a => (ACCT_TYPES.find(x => x[0] === a.type) || [0, 0, 'bank'])[2];

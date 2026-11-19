@@ -6,7 +6,7 @@ import { uid, todayStr } from './util.js';
 const TABLES = ['v2_categories', 'v2_accounts', 'v2_recurring', 'v2_transactions', 'v2_assets'];
 export const S = {
   sb: null, user: null, demo: false,
-  books: [], cats: [], accts: [], recs: [], txs: [], assets: [], snaps: []
+  books: [], cats: [], accts: [], recs: [], txs: [], assets: [], snaps: [], trash: []
 };
 
 export async function initClient() {
@@ -45,7 +45,8 @@ export async function loadAll() {
     return q.then(must);
   }));
   const snaps = assets.length ? must(await S.sb.from('v2_asset_snapshots').select('*').in('asset_id', assets.map(a => a.id))) : [];
-  Object.assign(S, { books, cats, accts, recs, txs, assets, snaps });
+  const trash = must(await S.sb.from('v2_transactions').select('*').in('book_id', ids).not('deleted_at', 'is', null).order('deleted_at', { ascending: false }).range(0, 499));
+  Object.assign(S, { books, cats, accts, recs, txs, assets, snaps, trash });
 }
 
 const KEY = { v2_books: 'books', v2_categories: 'cats', v2_accounts: 'accts', v2_recurring: 'recs', v2_transactions: 'txs', v2_assets: 'assets' };
@@ -53,6 +54,7 @@ const KEY = { v2_books: 'books', v2_categories: 'cats', v2_accounts: 'accts', v2
 // Optimistic write: update memory first, then the server. Returns a promise that rejects on server error.
 export async function put(table, row) {
   const list = S[KEY[table]];
+  if (table === 'v2_transactions' && !row.deleted_at) { const k = S.trash.findIndex(x => x.id === row.id); if (k >= 0) S.trash.splice(k, 1); }
   const i = list.findIndex(x => x.id === row.id);
   if (i >= 0) list[i] = row; else list.push(row);
   if (S.demo) return row;
@@ -70,10 +72,22 @@ export async function putMany(table, rows) {
 export async function remove(table, id) {
   const list = S[KEY[table]];
   const i = list.findIndex(x => x.id === id);
-  if (i >= 0) list.splice(i, 1);
+  const gone = i >= 0 ? list.splice(i, 1)[0] : null;
+  if (table === 'v2_transactions' && gone) S.trash.unshift(Object.assign({}, gone, { deleted_at: new Date().toISOString() }));
   if (S.demo) return;
   if (table === 'v2_transactions') must(await S.sb.from(table).update({ deleted_at: new Date().toISOString() }).eq('id', id).select());
   else must(await S.sb.from(table).delete().eq('id', id).select());
+}
+// Trash: deleted transactions stay on the server with deleted_at set; restore clears it, purge removes the row for good.
+export async function restoreTx(id) {
+  const t = S.trash.find(x => x.id === id); if (!t) return;
+  await put('v2_transactions', Object.assign({}, t, { deleted_at: null }));
+}
+export async function purgeTx(id) {
+  const k = S.trash.findIndex(x => x.id === id); const t = k >= 0 ? S.trash.splice(k, 1)[0] : null;
+  if (S.demo || !t) return t;
+  must(await S.sb.from('v2_transactions').delete().eq('id', id).select());
+  return t;
 }
 export async function putSnap(snap) {
   const i = S.snaps.findIndex(x => x.asset_id === snap.asset_id && x.date === snap.date);

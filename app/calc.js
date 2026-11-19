@@ -20,10 +20,46 @@ export const monthSum = m => sumOf(monthTx(m));
 export function series(endM, n = 6) {
   const out = []; for (let k = n - 1; k >= 0; k--) { const m = addMonths(endM, -k); out.push(Object.assign({ m }, monthSum(m))); } return out;
 }
+// Financial health score = four parts, each shown on the card so the number is explainable.
+const dimOf = m => new Date(Date.UTC(+m.slice(0, 4), +m.slice(5), 0)).getUTCDate();
 export function score(m) {
-  const s = monthSum(m); const rate = s.inc ? (s.inc - s.exp) / s.inc : (s.exp ? -1 : 0);
-  const v = Math.max(8, Math.min(96, Math.round(40 + rate * 60)));
-  return { v, grade: v >= 80 ? '아주 좋아요' : v >= 60 ? '좋아요' : v >= 40 ? '보통이에요' : '조심할 때예요' };
+  const s = monthSum(m), t = todayStr(), isNow = m === ym(t), dim = dimOf(m);
+  const elapsed = isNow ? Number(t.slice(8)) : dim;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  // 1. savings rate (40)
+  const rate = s.inc ? (s.inc - s.exp) / s.inc : (s.exp ? -1 : 0);
+  const p1 = Math.round(clamp(rate / 0.3, 0, 1) * 40);
+  // 2. fixed costs vs income (25): recurring expenses
+  const fixed = recs().filter(r => r.active !== false && r.type === 'expense').reduce((a, r) => a + Number(r.amount || 0), 0);
+  const fr = s.inc ? fixed / s.inc : null;
+  const p2 = fr == null ? 12 : Math.round(clamp((0.7 - fr) / 0.4, 0, 1) * 25);
+  // 3. spending pace vs the last 3 months, scaled to days elapsed (20)
+  const avg = [1, 2, 3].map(k => monthSum(addMonths(m, -k)).exp).reduce((a, b) => a + b, 0) / 3;
+  const expected = avg * elapsed / dim, pace = expected ? s.exp / expected : null;
+  const p3 = pace == null ? 10 : Math.round(clamp((1.5 - pace) / 0.5, 0, 1) * 20);
+  // 4. recording habit: days with at least one entry (15)
+  const days = new Set(monthTx(m).map(x => x.date)).size, hr = days / Math.max(1, elapsed);
+  const p4 = Math.round(clamp(hr / 0.5, 0, 1) * 15);
+  const v = clamp(p1 + p2 + p3 + p4, 0, 100);
+  const st = (x, max) => x >= max * 0.75 ? ['좋아요', 'good'] : x >= max * 0.4 ? ['보통', 'mid'] : ['주의', 'bad'];
+  const pct = x => Math.round(x * 100) + '%';
+  const f = [
+    { k: '저축률', v: s.inc ? pct(rate) : '수입 없음', note: '들어온 돈 중 남은 비율', p: p1, max: 40, st: st(p1, 40) },
+    { k: '고정 지출', v: fr == null ? '—' : pct(fr), note: '반복 지출 ÷ 들어온 돈', p: p2, max: 25, st: st(p2, 25) },
+    { k: '지출 속도', v: pace == null ? '—' : pct(pace), note: '지난 3달 같은 시점 대비', p: p3, max: 20, st: st(p3, 20) },
+    { k: '기록 습관', v: days + '/' + elapsed + '일', note: '기록한 날', p: p4, max: 15, st: st(p4, 15) }
+  ];
+  return { v, grade: v >= 80 ? '아주 좋아요' : v >= 60 ? '좋아요' : v >= 40 ? '보통이에요' : '조심할 때예요', f };
+}
+// Month-end outlook: current net minus recurring items not yet recorded this month.
+export function outlook(m) {
+  const s = monthSum(m), t = todayStr();
+  if (m !== ym(t)) return null;
+  const left = recs().filter(r => r.active !== false && !recDone(r, m));
+  const out = left.filter(r => r.type === 'expense').reduce((a, r) => a + Number(r.amount || 0), 0);
+  const inn = left.filter(r => r.type === 'income').reduce((a, r) => a + Number(r.amount || 0), 0);
+  const dim = dimOf(m), day = Number(t.slice(8));
+  return { end: s.inc - s.exp - out + inn, out, inn, n: left.length, day, dim, used: s.inc ? s.exp / s.inc : null };
 }
 
 // Recurring: due date in a month, and whether it is already recorded.
