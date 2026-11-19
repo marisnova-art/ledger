@@ -6,7 +6,7 @@ import { cur, book, bookTx, sumOf, cats, accts, recs, assets, catOf, acctOf, mon
 import { parseLine } from './ai.js';
 
 const app = document.getElementById('app');
-const V = { view: 'home', month: ym(todayStr()), lm: ym(todayStr()), q: '', kind: 'all', catF: '', showN: 10, alF: 'all', setKind: 'expense', bpick: false };
+const V = { heroOpen: (() => { try { return localStorage.getItem('ledger.v2.heroOpen') === '1'; } catch (e) { return false; } })(), view: 'home', month: ym(todayStr()), lm: ym(todayStr()), q: '', kind: 'all', catF: '', showN: 10, alF: 'all', setKind: 'expense', bpick: false };
 let theme = 'dark';
 try { theme = localStorage.getItem('ledger.v2.theme') || 'dark'; cur.bookId = localStorage.getItem('ledger.v2.book'); } catch (e) {}
 const applyTheme = () => {
@@ -170,11 +170,10 @@ function homeView() {
   const nw = netWorthAt(ym(todayStr())), nwd = nw - netWorthAt(addMonths(ym(todayStr()), -1));
   CH.avg = null; const nM = 6, s6 = series(m, nM), nUsed = Math.max(1, s6.filter(d => d.inc || d.exp).length), avgI = s6.reduce((x, d) => x + d.inc, 0) / nUsed, avgE = s6.reduce((x, d) => x + d.exp, 0) / nUsed; CH.s = s6; CH.avg = [avgI, avgE]; CH.act = s6.length - 1;
   const col = isP ? 's4' : 's6';
-  const tiles = heroTiles(m), mob = isMobile();
+  const tiles = heroTiles(m), mob = isMobile(), open = !mob || V.heroOpen;
   return '<section class="card hero s12 m1"><div class="hgrid"><div class="hl"><div class="card-h">' + mstep('hm', m, ym(todayStr())).replace('<span>' + m.slice(0, 4) + '년 ' + monthLabel(m), '<span class="muted">' + monthLabel(m) + ' 남은 돈') + '</div>' +
-      '<div class="num">' + signed(net) + '</div>' + heroMore(m) + (mob ? '' : heroAccts(m)) + '<div class="stats three"><div><span class="small muted lbl in"><svg viewBox="0 0 18 18"><path d="M5 9h8M9 5v8"/></svg>들어온 돈</span><span class="v">+' + won(now.inc) + '</span></div><div><span class="small muted lbl out"><svg viewBox="0 0 18 18"><path d="M5 9h8"/></svg>나간 돈</span><span class="v">−' + won(now.exp) + '</span></div><div><span class="small muted lbl ' + (diff >= 0 ? 'in' : 'out') + '"><svg viewBox="0 0 18 18">' + (diff >= 0 ? '<path d="M9 13V5M5.5 8.5L9 5l3.5 3.5"/>' : '<path d="M9 5v8M5.5 9.5L9 13l3.5-3.5"/>') + '</svg>지난달보다</span><span class="v">' + signed(diff) + '</span></div></div></div>' +
-      (mob ? '' : '<div class="hr"><div class="htiles">' + tiles.join('') + '</div></div>') + '</div></section>' +
-    (mob ? '<div class="hstrip m2">' + tiles.join('') + (accts().length ? '<div class="htile">' + heroAccts(m) + '</div>' : '') + '</div>' : '') +
+      '<div class="num">' + signed(net) + '</div>' + (open ? heroMore(m) + heroAccts(m) : '') + '<div class="stats three"><div><span class="small muted lbl in"><svg viewBox="0 0 18 18"><path d="M5 9h8M9 5v8"/></svg>들어온 돈</span><span class="v">+' + won(now.inc) + '</span></div><div><span class="small muted lbl out"><svg viewBox="0 0 18 18"><path d="M5 9h8"/></svg>나간 돈</span><span class="v">−' + won(now.exp) + '</span></div><div><span class="small muted lbl ' + (diff >= 0 ? 'in' : 'out') + '"><svg viewBox="0 0 18 18">' + (diff >= 0 ? '<path d="M9 13V5M5.5 8.5L9 5l3.5 3.5"/>' : '<path d="M9 5v8M5.5 9.5L9 13l3.5-3.5"/>') + '</svg>지난달보다</span><span class="v">' + signed(diff) + '</span></div></div></div>' +
+      (open ? '<div class="hr"><div class="htiles">' + tiles.join('') + '</div></div>' : '') + '</div>' + (mob ? '<button class="htog" data-hopen aria-expanded="' + !!open + '">' + (open ? '접기' : '자세히 보기') + '<svg viewBox="0 0 18 18"><path d="' + (open ? 'M5 11l4-4 4 4' : 'M5 7l4 4 4-4') + '"/></svg></button>' : '') + '</section>' +
     '<section class="card s12 m3"><div class="card-h"><span class="strong">최근 거래 <span class="small muted">' + recent.length + '건</span></span><button class="golink" data-go="list">전체 보기 ›</button></div><div>' + (shown.length ? shown.map(t => txRow(t, { date: true })).join('') : '<div class="empty">아직 거래가 없어요. 거래 추가로 시작해 보세요.</div>') + '</div>' + (rest > 0 ? '<button class="more" data-more>' + Math.min(10, rest) + '건 더 보기</button>' : '') + '</section>' +
     '<section class="card ' + col + ' m4"><div class="card-h"><span class="strong">이번 달 반복 거래 <span class="small muted">' + rt.filter(x => x.done).length + '/' + rt.length + ' 완료</span></span>' + '<button class="golink" data-go="settings">관리 ›</button></div>' +
       (rt.length ? rt.slice().sort((a, b) => (a.done - b.done) || a.due.localeCompare(b.due)).slice(0, 7).map(({ r, due, done }) => '<button class="row" data-rec="' + r.id + '"><span class="mid"><div>' + esc(r.name) + '</div><div class="small muted">' + shortDate(due) + ' · ' + (done ? '완료' : '예정') + '</div></span><span class="small strong ' + (r.type === 'income' ? 'up' : 'down') + '">' + won(r.amount) + '</span></button>').join('') + '' : '<div class="empty small">등록된 반복 거래가 없어요</div>') + '</section>' +
@@ -726,6 +725,7 @@ app.addEventListener('click', async e => {
   if (el('[data-qclear]')) { V.q = ''; render(); return; }
   if (el('[data-totop]')) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (el('[data-more]')) { V.showN += 10; render(); return; }
+  if ((x = el('[data-hopen]'))) { V.heroOpen = !V.heroOpen; try { localStorage.setItem('ledger.v2.heroOpen', V.heroOpen ? '1' : '0'); } catch (e) {} render(); return; }
   if ((x = el('[data-hm]'))) { V.month = addMonths(V.month, +x.dataset.hm); render(); return; }
   if ((x = el('[data-lm]'))) { V.lm = addMonths(V.lm, +x.dataset.lm); V.catF = ''; render(); return; }
   if ((x = el('[data-kind]'))) { V.kind = x.dataset.kind; render(); return; }
