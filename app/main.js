@@ -119,39 +119,51 @@ function heroMore(m) {
 // Hero tiles: small numbers with a mini chart each. PC: inside the hero card; mobile: a swipeable strip below it.
 function heroTiles(m) {
   const t = todayStr(), isNow = m === ym(t), o = outlook(m) || {}, dim = o.dim || 30, day = o.day || dim, s = monthSum(m), pm = addMonths(m, -1);
-  const tile = (k, v, viz, extra) => '<div class="htile' + (extra || '') + '"><span class="small hk">' + k + '</span><span class="hv">' + v + '</span>' + viz + '</div>';
+  // tile = header (icon + label + badge) / value / note / mini chart; the whole tile is a button
+  const tile = (go, ic, k, badge, v, note, viz) => '<button class="htile" ' + go + '><span class="hhead"><span class="hic">' + icon(ic) + '</span><span class="small hk">' + k + '</span>' + (badge ? '<span class="small hbadge">' + badge + '</span>' : '') + '</span><span class="hv">' + v + '</span>' + (note ? '<span class="small hnote">' + note + '</span>' : '') + viz + '</button>';
   const daily = mm => { const a = new Array(31).fill(0); monthTx(mm).forEach(x => { if (x.type === 'expense') a[+x.date.slice(8) - 1] += Number(x.amount); }); return a; };
   const cum = a => { let c = 0; return a.map(v => (c += v)); };
   const out = [];
   // 1. spending flow vs last month (cumulative)
   const cn = cum(daily(m)).slice(0, isNow ? day : dim), cp = cum(daily(pm)).slice(0, dimOfM(pm));
-  const mx = Math.max(1, ...cn, ...cp), W = 220, H = 56, X = i => (i / Math.max(1, dim - 1)) * W, Y = v => H - 3 - (v / mx) * (H - 8);
+  const mx = Math.max(1, ...cn, ...cp), W = 220, H = 60, X = i => (i / Math.max(1, dim - 1)) * W, Y = v => H - 4 - (v / mx) * (H - 12);
   const path = a => a.map((v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1)).join('');
-  const sameDay = cp[Math.min(cp.length, cn.length) - 1] || 0, nowV = cn[cn.length - 1] || 0, dd = nowV - sameDay;
-  out.push(tile('지출 흐름 · 지난달 같은 날 대비', (dd > 0 ? won(dd) + ' 더 씀' : dd < 0 ? won(-dd) + ' 덜 씀' : '같아요'),
-    '<svg class="hviz" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><path d="' + path(cp) + '" fill="none" stroke="currentColor" stroke-opacity=".3" stroke-width="2" vector-effect="non-scaling-stroke"/><path d="' + path(cn) + '" fill="none" stroke="currentColor" stroke-width="2.5" vector-effect="non-scaling-stroke"/>' + (cn.length ? '<circle cx="' + X(cn.length - 1) + '" cy="' + Y(nowV) + '" r="3.5" fill="currentColor"/>' : '') + '</svg>'));
-  // 2. per-day money
-  const bars = (rows) => { const top = Math.max(1, ...rows.map(r => r[1])); return '<div class="hbars">' + rows.map(r => '<div class="hb"><span class="small">' + r[0] + '</span><i><b style="width:' + Math.round(r[1] / top * 100) + '%"></b></i><span class="small">' + man(r[1]) + '</span></div>').join('') + '</div>'; };
-  if (isNow) { const left = Math.max(0, o.end || 0), dl = dim - day + 1, per = Math.round(left / dl), avg = Math.round(s.exp / Math.max(1, day));
-    out.push(tile('하루 써도 되는 돈', per > 0 ? won(per) : '남은 예산 없음', bars([['남은 ' + dl + '일', per], ['지금 평균', avg]]))); }
-  else { const avg = Math.round(s.exp / dim), pa = Math.round(monthSum(pm).exp / dimOfM(pm));
-    out.push(tile('하루 평균 지출', won(avg), bars([[monthLabel(m), avg], [monthLabel(pm), pa]]))); }
-  // 3. upcoming payments (7 days) / past: spending by day
+  const sameDay = cp[Math.min(cp.length, cn.length) - 1] || 0, nowV = cn[cn.length - 1] || 0, dd = nowV - sameDay, pct = sameDay ? Math.round(dd / sameDay * 100) : 0;
+  const area = cn.length ? path(cn) + 'L' + X(cn.length - 1).toFixed(1) + ' ' + H + 'L0 ' + H + 'Z' : '';
+  out.push(tile('data-go="list"', 'trend', '지출 흐름', isNow ? day + '일째' : monthLabel(m) + ' 마감', won(nowV), dd > 0 ? '지난달 같은 날보다 ' + won(dd) + ' 더' + (pct ? ' (▲' + pct + '%)' : '') : dd < 0 ? '지난달 같은 날보다 ' + won(-dd) + ' 덜' + (pct ? ' (▼' + (-pct) + '%)' : '') : '지난달과 같아요',
+    '<svg class="hviz" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><path d="' + area + '" fill="currentColor" fill-opacity=".10"/><path d="' + path(cp) + '" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/><path d="' + path(cn) + '" fill="none" stroke="currentColor" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg><span class="small hleg"><span><i></i>' + monthLabel(m) + '</span><span><i class="dash"></i>' + monthLabel(pm) + '</span></span>'));
+  // 2. per-day money (gauge: average so far vs allowed per day)
+  const gauge = (val, lim) => { const r = Math.max(0, Math.min(1, lim ? val / lim : 1)), L = 100; return '<div class="hgauge"><i><b style="width:' + Math.round(r * L) + '%"></b></i></div>'; };
+  if (isNow) {
+    const left = Math.max(0, o.end || 0), dl = dim - day + 1, per = Math.round(left / dl), avg = Math.round(s.exp / Math.max(1, day));
+    const st = per <= 0 ? '남은 예산이 없어요' : avg <= per ? '지금 속도면 괜찮아요' : '하루 평균이 ' + won(avg - per) + ' 많아요';
+    out.push(tile('data-go="list"', 'wallet', '하루 써도 되는 돈', '남은 ' + dl + '일', per > 0 ? won(per) : '0원', st,
+      gauge(avg, per) + '<span class="small hrow"><span>지금 하루 평균</span><span>' + won(avg) + '</span></span>'));
+  } else {
+    const avg = Math.round(s.exp / dim), pa = Math.round(monthSum(pm).exp / dimOfM(pm)), d2 = avg - pa;
+    out.push(tile('data-go="list"', 'wallet', '하루 평균 지출', monthLabel(m), won(avg), d2 > 0 ? monthLabel(pm) + '보다 ' + won(d2) + ' 많아요' : d2 < 0 ? monthLabel(pm) + '보다 ' + won(-d2) + ' 적어요' : monthLabel(pm) + '과 같아요',
+      gauge(Math.min(avg, pa), Math.max(avg, pa, 1)) + '<span class="small hrow"><span>' + monthLabel(pm) + ' 하루 평균</span><span>' + won(pa) + '</span></span>'));
+  }
+  // 3. upcoming payments (7 days) / past: biggest day
   if (isNow) {
     const days = [...Array(7)].map((_, i) => addDays(t, i)), due = [];
     recs().filter(r => r.active !== false && r.type === 'expense').forEach(r => [m, addMonths(m, 1)].forEach(mm => { const d = dueDate(r, mm); if (d >= days[0] && d <= days[6] && !recDone(r, mm)) due.push({ r, d }); }));
-    const sum = due.reduce((a, x) => a + Number(x.r.amount || 0), 0);
-    out.push(tile('다가오는 결제 · 7일', due.length ? due.length + '건 · ' + won(sum) : '없어요', '<div class="hdays">' + days.map(d => '<span class="hd' + (due.some(x => x.d === d) ? ' on' : '') + '"><em>' + weekday(d) + '</em>' + Number(d.slice(8)) + '</span>').join('') + '</div>'));
+    due.sort((a, b) => a.d.localeCompare(b.d));
+    const sum = due.reduce((a, x) => a + Number(x.r.amount || 0), 0), nx = due[0];
+    out.push(tile('data-go="settings"', 'calendar', '다가오는 결제', '7일', due.length ? won(sum) : '없어요', nx ? shortDate(nx.d) + ' ' + esc(nx.r.name) + (due.length > 1 ? ' 외 ' + (due.length - 1) + '건' : '') : '앞으로 7일은 결제가 없어요',
+      '<div class="hdays">' + days.map(d => '<span class="hd' + (due.some(x => x.d === d) ? ' on' : '') + (d === t ? ' today' : '') + '"><em>' + weekday(d) + '</em>' + Number(d.slice(8)) + '</span>').join('') + '</div>'));
   } else {
     const a = daily(m).slice(0, dim), top = Math.max(1, ...a), mi = a.indexOf(Math.max(...a));
-    out.push(tile('가장 많이 쓴 날', a[mi] ? Number(m.slice(5)) + '.' + String(mi + 1).padStart(2, '0') + ' · ' + won(a[mi]) : '없어요', '<svg class="hviz" viewBox="0 0 ' + (dim * 7) + ' 56" preserveAspectRatio="none">' + a.map((v, i) => '<rect x="' + (i * 7 + 1) + '" y="' + (56 - Math.max(2, v / top * 52)) + '" width="5" height="' + Math.max(2, v / top * 52) + '" rx="1.5" fill="currentColor" fill-opacity="' + (i === mi ? 1 : .35) + '"/>').join('') + '</svg>'));
+    const tx = monthTx(m).filter(x => x.type === 'expense' && +x.date.slice(8) === mi + 1).sort((x, y) => y.amount - x.amount)[0];
+    out.push(tile('data-go="list"', 'calendar', '가장 많이 쓴 날', a[mi] ? Number(m.slice(5)) + '.' + String(mi + 1).padStart(2, '0') : '', a[mi] ? won(a[mi]) : '없어요', tx ? esc(tx.description || '') : '',
+      '<svg class="hviz" viewBox="0 0 ' + (dim * 7) + ' 60" preserveAspectRatio="none">' + a.map((v, i) => '<rect x="' + (i * 7 + 1) + '" y="' + (60 - Math.max(2, v / top * 56)) + '" width="5" height="' + Math.max(2, v / top * 56) + '" rx="1.5" fill="currentColor" fill-opacity="' + (i === mi ? 1 : .3) + '"/>').join('') + '</svg>'));
   }
   // 4. top categories
   const bc = {}; monthTx(m).forEach(x => { if (x.type === 'expense') bc[x.category_id] = (bc[x.category_id] || 0) + Number(x.amount); });
   const rows = Object.entries(bc).sort((a, b) => b[1] - a[1]), tot = rows.reduce((a, r) => a + r[1], 0), top3 = rows.slice(0, 3), OPS = [1, .55, .3];
   const nm = id => (catOf(id) || {}).name || '분류 없음';
-  out.push(tile('많이 쓴 분류', top3.length ? esc(nm(top3[0][0])) + ' ' + Math.round(top3[0][1] / tot * 100) + '%' : '없어요',
-    '<div class="hstack">' + top3.map((r, i) => '<b style="width:' + (r[1] / tot * 100) + '%;opacity:' + OPS[i] + '"></b>').join('') + '</div><div class="hleg small">' + top3.map((r, i) => '<span><i style="opacity:' + OPS[i] + '"></i>' + esc(nm(r[0])) + '</span>').join('') + '</div>'));
+  out.push(tile(top3.length ? 'data-compcat="' + (top3[0][0] || '') + '"' : 'data-go="list"', 'pie', '많이 쓴 분류', rows.length ? rows.length + '개 분류' : '', top3.length ? esc(nm(top3[0][0])) + ' ' + won(top3[0][1]) : '없어요', top3.length ? '나간 돈의 ' + Math.round(top3[0][1] / tot * 100) + '%' : '',
+    '<div class="hstack">' + top3.map((r, i) => '<b style="width:' + (r[1] / tot * 100) + '%;opacity:' + OPS[i] + '"></b>').join('') + '</div><span class="small hleg">' + top3.map((r, i) => '<span><i style="opacity:' + OPS[i] + '"></i>' + esc(nm(r[0])) + ' ' + Math.round(r[1] / tot * 100) + '%</span>').join('') + '</span>'));
   return out;
 }
 const dimOfM = m => new Date(Date.UTC(+m.slice(0, 4), +m.slice(5), 0)).getUTCDate();
