@@ -276,6 +276,18 @@ function monthGroups(list) {
     return '<div class="mband"><span class="strong">' + m.slice(0, 4) + '년 ' + monthLabel(m) + '</span><span class="muted">' + g[m].length + '건</span><span class="sp"></span><span class="up">+' + won(s.i) + '</span><span class="down">−' + won(s.e) + '</span><span class="strong">' + signed(s.i - s.e) + '</span></div>' + dayGroups(g[m]);
   }).join('');
 }
+// Filter chip: optional tinted icon, label and count.
+const chip = (attr, on, cls, label, n, ic) => '<button class="pill chip ' + cls + '" ' + attr + ' aria-pressed="' + on + '">' + (ic ? '<span class="cic">' + ic + '</span>' : '') + label + '<span class="cn">' + n + '</span></button>';
+// Summary at the top of the transaction list: in / out tiles, then what is left with an in-vs-out bar.
+function listSummary(s, list) {
+  const net = s.inc - s.exp, tot = s.inc + s.exp, pi = tot ? s.inc / tot * 100 : 50, used = s.inc ? Math.round(s.exp / s.inc * 100) : null;
+  return '<div class="lsum">' +
+    '<div class="lt in"><span class="lic">' + icon('plus') + '</span><span class="small muted">' + T('in') + '</span><span class="v up">+' + won(s.inc) + '</span></div>' +
+    '<div class="lt out"><span class="lic">' + icon('minus') + '</span><span class="small muted">' + T('out') + '</span><span class="v down">−' + won(s.exp) + '</span></div>' +
+    '<div class="lt net"><div class="kv"><span class="small muted">' + T('left') + ' · ' + list.length + '건</span><span class="v">' + signed(net) + '</span></div>' +
+      '<div class="lbar"><i class="bi" style="flex:' + pi.toFixed(1) + '"></i><i class="bo" style="flex:' + (100 - pi).toFixed(1) + '"></i></div>' +
+      '<span class="small muted">' + (used == null ? (s.exp ? T('in') + ' 없이 ' + T('out') + '만 있어요' : '이 기간에는 거래가 없어요') : T('in') + '의 ' + used + '%를 썼어요') + '</span></div></div>';
+}
 function listView() {
   const q = V.q.trim().toLowerCase(), m = V.lm, adv = V.adv;
   let list = bookTx();
@@ -291,10 +303,10 @@ function listView() {
     : mstep('lm', m, ym(todayStr())) + '<button class="btn-ghost" data-advopen>' + icon('search') + '상세 검색</button>';
   return '<section class="card s12"><div class="lv" data-live="a"><div class="card-h">' + head + '</div>' +
       (adv ? '<div class="small muted">' + esc(advSummary(adv)) + '</div>' : '') +
-      '<div class="stats four"><div><span class="small muted">거래</span><span class="v">' + list.length + '건</span></div><div><span class="small muted">' + T('in') + '</span><span class="v up">+' + won(s.inc) + '</span></div><div><span class="small muted">' + T('out') + '</span><span class="v down">−' + won(s.exp) + '</span></div><div><span class="small muted">' + T('left') + '</span><span class="v">' + signed(s.inc - s.exp) + '</span></div></div>' +
+      listSummary(s, list) +
       '</div>' + (isMobile() && !adv ? '<label class="search m">' + icon('search') + '<input id="q" type="search" placeholder="내용·거래처·메모·분류로 찾기" value="' + esc(V.q) + '" autocomplete="off"></label>' : '') +
-      '<div class="lv" data-live="b"><div class="pills scroll"><button class="pill" data-kind="all" aria-pressed="' + (V.kind === 'all') + '">전체</button><button class="pill kin" data-kind="income" aria-pressed="' + (V.kind === 'income') + '">' + T('in') + '</button><button class="pill kout" data-kind="expense" aria-pressed="' + (V.kind === 'expense') + '">' + T('out') + '</button>' +
-        used.map(c => '<button class="pill" data-catf="' + c.id + '" aria-pressed="' + (V.catF === c.id) + '">' + icon(catIcon(c)) + esc(c.name) + '</button>').join('') + '</div>' +
+      '<div class="lv" data-live="b"><div class="pills scroll chips">' + chip('data-kind="all"', V.kind === 'all', '', '전체', base.length) + chip('data-kind="income"', V.kind === 'income', 'kin', T('in'), base.filter(t => t.type === 'income').length) + chip('data-kind="expense"', V.kind === 'expense', 'kout', T('out'), base.filter(t => t.type === 'expense').length) +
+        '<span class="chip-sep" aria-hidden="true"></span>' + used.map(c => chip('data-catf="' + c.id + '"', V.catF === c.id, c.type === 'income' ? 'cin' : 'cout', esc(c.name), base.filter(t => t.category_id === c.id).length, icon(catIcon(c)))).join('') + '</div>' +
       '<div>' + (list.length ? ((adv || q) ? monthGroups(sortTx(list)) : dayGroups(list)) : '<div class="empty">' + (adv || q ? '찾는 거래가 없어요' : '이 달에는 거래가 없어요') + '</div>') + '</div></div></section>';
 }
 function openAdv() {

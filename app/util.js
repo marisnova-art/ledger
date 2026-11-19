@@ -21,6 +21,7 @@ export const P = {
   home: 'M3 11l9-7 9 7M5 10v10h14V10',
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
   plus: 'M12 5v14M5 12h14',
+  minus: 'M5 12h14',
   pie: 'M12 3v9h9M12 3a9 9 0 1 0 9 9',
   bank: 'M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18',
   trend: 'M3 17l6-6 4 4 8-8M15 7h6v6',
