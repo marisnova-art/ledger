@@ -4,7 +4,7 @@
    - 글꼴·라이브러리 CDN: 저장본 즉시 사용 + 뒤에서 갱신(stale-while-revalidate)
    - Supabase API(동기화)와 GET이 아닌 요청은 절대 가로채거나 저장하지 않음
    배포할 때 index.html을 바꿨다면 VERSION 숫자를 올려 주세요. */
-const VERSION = 'ledger-v1.0.0';
+const VERSION = 'ledger-v2.0.0';
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 const RUNTIME_MAX = 160;
@@ -14,6 +14,13 @@ const SHELL_FILES = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './app/styles.css',
+  './app/main.js',
+  './app/config.js',
+  './app/util.js',
+  './app/store.js',
+  './app/calc.js',
+  './app/ai.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-192.png',
@@ -67,7 +74,7 @@ self.addEventListener('fetch', event => {
     return;
   }
   if (url.origin === self.location.origin) {
-    event.respondWith(cacheFirst(req));
+    event.respondWith(url.pathname.includes('/app/') ? networkFirst(req) : cacheFirst(req));
     return;
   }
   if (CDN_HOSTS.some(h => url.hostname === h || url.hostname.endsWith('.' + h))) {
@@ -105,6 +112,18 @@ async function handleNavigate(event) {
       '<button onclick="location.reload()" style="margin-top:12px;padding:12px 22px;border:0;border-radius:999px;background:#D4FF3A;color:#131A00;font-weight:700;font-size:15px">다시 시도</button></div></body>',
       { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
     );
+  }
+}
+
+// 앱 코드(app/*)는 새 버전이 바로 반영되도록 네트워크 우선, 오프라인이면 저장본
+async function networkFirst(req) {
+  const cache = await caches.open(SHELL);
+  try {
+    const res = await fetch(req);
+    if (res.ok) cache.put(req, res.clone());
+    return res;
+  } catch (e) {
+    return (await cache.match(req, { ignoreSearch: true })) || Response.error();
   }
 }
 
