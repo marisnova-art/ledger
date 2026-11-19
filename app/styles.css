@@ -137,9 +137,12 @@ button.tx:hover { background: var(--soft); }
 .ic.warn { background: color-mix(in srgb, var(--coral) 15%, transparent); color: var(--coral); }
 .tx .mid { flex: 1; min-width: 0; }
 .tx .mid > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tx .mid > .ttl { display: flex; align-items: center; min-width: 0; }
+.tx .ttl .tt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx .ttl .rec { flex: none; }
 .tx .amt { font-weight: 400; white-space: nowrap; }
-.rec { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px 0 6px; margin-left: 6px; border-radius: 99px; background: var(--ink); color: var(--bg); font-size: var(--t3); font-weight: 400; vertical-align: 1px; }
-.rec svg.i { width: 13px; height: 13px; stroke-width: 2.4; }
+.rec { display: inline-flex; align-items: center; height: 1em; margin-left: 6px; color: var(--muted); vertical-align: -0.1em; }
+.rec svg.i { width: 1em; height: 1em; stroke-width: 2; }
 .dayband { display: flex; align-items: center; gap: 10px; padding: 7px 12px; margin-top: 10px; border-radius: 10px; background: var(--soft); font-size: var(--t3); font-weight: 400; }
 .dayband:first-child { margin-top: 0; }
 .dayband .dl { padding: 2px 8px; border-radius: 6px; background: var(--ink); color: var(--bg); font-weight: 400; }

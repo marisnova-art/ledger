@@ -29,7 +29,7 @@ function txRow(t, opts = {}) {
   const c = catOf(t.category_id), a = acctOf(t.account_id), inc = t.type === 'income';
   const title = t.description || t.vendor || (c && c.name) || '거래';
   const sub = [t.vendor && t.vendor !== title ? t.vendor : '', c ? c.name : '분류 없음', a ? a.name : '', opts.date ? shortDate(t.date) + (isMobile() ? '' : ' ' + weekday(t.date)) : '', isMobile() ? '' : t.time || ''].filter(Boolean).join(' · ');
-  return '<button class="tx ' + (inc ? 'r-in' : 'r-out') + '" data-tx="' + t.id + '"><span class="ic ' + (inc ? 'inc' : 'exp') + '">' + icon(catIcon(c)) + '</span><span class="mid"><div>' + esc(title) + (t.recurring_id ? '<span class="rec">' + icon('repeat') + '반복</span>' : '') + (t.receipt_path ? '<span class="rec" title="영수증 있음" aria-label="영수증 있음">' + icon('receipt') + '</span>' : '') + '</div><div class="small muted">' + esc(sub) + '</div></span><span class="amt ' + (inc ? 'up' : 'down') + '">' + (inc ? '+' : '−') + won(t.amount) + '</span></button>';
+  return '<button class="tx ' + (inc ? 'r-in' : 'r-out') + '" data-tx="' + t.id + '"><span class="ic ' + (inc ? 'inc' : 'exp') + '">' + icon(catIcon(c)) + '</span><span class="mid"><div class="ttl"><span class="tt">' + esc(title) + '</span>' + (t.recurring_id ? '<span class="rec" title="반복 거래" aria-label="반복 거래">' + icon('repeat') + '</span>' : '') + (t.receipt_path ? '<span class="rec" title="영수증 있음" aria-label="영수증 있음">' + icon('receipt') + '</span>' : '') + '</div><div class="small muted">' + esc(sub) + '</div></span><span class="amt ' + (inc ? 'up' : 'down') + '">' + (inc ? '+' : '−') + won(t.amount) + '</span></button>';
 }
 function dayGroups(list) {
   const g = {}; list.forEach(t => { (g[t.date] = g[t.date] || []).push(t); });
