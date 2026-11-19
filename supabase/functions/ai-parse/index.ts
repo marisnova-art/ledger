@@ -29,10 +29,13 @@ Deno.serve(async (req) => {
   if (bumpErr) return out(401, { error: "auth" });
   if (!ok) return out(429, { error: "limit", limit: DAILY_LIMIT });
 
-  let body: { text?: string; today?: string; now?: string; categories?: Ref[]; accounts?: Ref[] };
+  let body: { text?: string; today?: string; now?: string; categories?: Ref[]; accounts?: Ref[]; image?: { media_type?: string; data?: string } };
   try { body = await req.json(); } catch { return out(400, { error: "json" }); }
   const text = String(body.text || "").slice(0, 600).trim();
-  if (!text) return out(400, { error: "empty" });
+  const img = body.image && typeof body.image.data === "string" ? body.image : null;
+  const imgType = img && ["image/jpeg", "image/png", "image/webp"].includes(String(img.media_type)) ? String(img.media_type) : "image/jpeg";
+  if (img && img.data!.length > 7_000_000) return out(413, { error: "image_too_big" });
+  if (!text && !img) return out(400, { error: "empty" });
   const cats = (body.categories || []).slice(0, 80).map((c) => ({ id: String(c.id), name: String(c.name).slice(0, 20), type: c.type === "income" ? "income" : "expense" }));
   const accts = (body.accounts || []).slice(0, 30).map((a) => ({ id: String(a.id), name: String(a.name).slice(0, 20), type: String(a.type || "") }));
 
@@ -71,6 +74,7 @@ Deno.serve(async (req) => {
     "Pick category_id from the user's own categories with the same type; choose the closest by meaning. Use empty only if none is close.",
     "Pick account_id only when the note names that account, card, or cash; otherwise empty.",
     "description: a short Korean label of the item (not the shop name when the item is clear). vendor: the shop or person if named.",
+    "If an image is attached it is a receipt or a bank/card app screenshot. A receipt is one item: the total paid (not each line), with the shop as vendor and the receipt's date/time. A transaction list screenshot gives one item per row, using each row's sign or in/out column for type. Skip balances, subtotals, cancelled rows and anything unreadable.",
   ].join("\n");
   const user = JSON.stringify({ today: body.today, now: body.now, categories: cats, accounts: accts, note: text });
 
@@ -83,7 +87,9 @@ Deno.serve(async (req) => {
       fallbacks: "default",
       output_config: { effort: "low", format: { type: "json_schema", schema } },
       system,
-      messages: [{ role: "user", content: user }],
+      messages: [{ role: "user", content: img
+        ? [{ type: "image", source: { type: "base64", media_type: imgType, data: img.data } }, { type: "text", text: user }]
+        : user }],
     } as any);
     if (res.stop_reason === "refusal") return out(422, { error: "refusal" });
     const txt = res.content.map((b: any) => (b.type === "text" ? b.text : "")).join("");

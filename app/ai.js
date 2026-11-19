@@ -41,13 +41,13 @@ export function parseLine(line, { cats, accts }) {
 // Real AI parse through the ai-parse server function. Returns items in the same shape as parseLine,
 // or null when AI is unavailable (demo, offline, no key, daily limit) so callers keep the local result.
 const aiCache = new Map();
-export function aiParse(text, { sb, cats, accts, now }) {
+export function aiParse(text, { sb, cats, accts, now, image }) {
   text = (text || '').trim();
-  if (!sb || text.length < 4) return Promise.resolve(null);
-  if (aiCache.has(text)) return aiCache.get(text);
+  if (!sb || (!image && text.length < 4)) return Promise.resolve(null);
+  if (!image && aiCache.has(text)) return aiCache.get(text);
   const catIds = new Set((cats || []).map(c => c.id)), acctIds = new Set((accts || []).map(a => a.id)), t = todayStr();
   const p = sb.functions.invoke('ai-parse', { body: {
-    text, today: t, now,
+    text, today: t, now, image,
     categories: (cats || []).filter(c => !c.hidden).map(c => ({ id: c.id, name: c.name, type: c.type })),
     accounts: (accts || []).map(a => ({ id: a.id, name: a.name, type: a.type }))
   } }).then(({ data, error }) => {
@@ -64,7 +64,23 @@ export function aiParse(text, { sb, cats, accts, now }) {
     })).filter(it => it.amount > 0);
     return items.length ? items : null;
   }).catch(() => null);
+  if (image) return p;
   p.then(r => { if (!r) aiCache.delete(text); });
   aiCache.set(text, p);
   return p;
+}
+
+// Shrinks a photo/screenshot to at most 1600px on the long side as JPEG, returned as base64 (no prefix).
+export function imageToB64(file, max = 1600) {
+  return new Promise((ok, bad) => {
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, max / Math.max(im.width, im.height)), c = document.createElement('canvas');
+      c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+      const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); ok(c.toDataURL('image/jpeg', 0.85).split(',')[1]);
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); bad(new Error('image')); };
+    im.src = url;
+  });
 }
