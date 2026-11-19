@@ -220,7 +220,7 @@ button.tx:hover { background: var(--soft); }
 
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(28px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: flex; gap: 16px; align-items: center; padding: 12px 16px; border-radius: 14px; background: var(--ink); color: var(--bg); font-size: var(--t3); width: max-content; max-width: calc(100vw - 32px); }
 .toast button { color: var(--bg); font-weight: 400; text-decoration: underline; }
-.totop { position: fixed; right: max(20px, env(safe-area-inset-right, 0px)); bottom: calc(88px + env(safe-area-inset-bottom, 0px)); z-index: 30; width: 48px; height: 48px; border-radius: 99px; display: grid; place-items: center; background: var(--ink); color: var(--bg); opacity: 0; pointer-events: none; transition: opacity .2s; }
+.totop { position: fixed; right: max(20px, env(safe-area-inset-right, 0px)); bottom: calc(88px + env(safe-area-inset-bottom, 0px)); z-index: 30; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--ink); color: var(--bg); opacity: 0; pointer-events: none; transition: opacity .2s; }
 .totop.show { opacity: 1; pointer-events: auto; }
 
 /* login / loading */
