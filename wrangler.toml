@@ -1,0 +1,8 @@
+# Cloudflare Pages config (branch v2). Static files are served from the repo root as before;
+# the only addition is the Workers AI binding used by functions/api/ai-parse.js.
+name = "oneledger"
+pages_build_output_dir = "."
+compatibility_date = "2025-06-01"
+
+[ai]
+binding = "AI"

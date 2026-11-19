@@ -503,3 +503,8 @@ html, body { overscroll-behavior: none; }
 .isug { min-height: 44px; align-items: center; }
 .isug > span { grid-column: 1 / -1; }
 .ai-state { margin: 2px 2px 6px; }
+.ai-cam { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; cursor: pointer; color: var(--muted); flex: none; }
+.ai-cam:hover { color: var(--ink); background: var(--card); }
+.imgrow { width: 100%; text-align: left; }
+.imgrow[aria-pressed="false"] { opacity: .45; }
+.imgrow .tag { margin-left: 6px; }

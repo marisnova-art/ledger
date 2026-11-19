@@ -38,7 +38,7 @@ export function parseLine(line, { cats, accts }) {
   return { date, time, type, amount, description: rest || (meal && type === 'expense' ? meal : '') || (cat ? cat.name : ''), category_id: cat ? cat.id : null, account_id };
 }
 
-// Real AI parse through the ai-parse server function. Returns items in the same shape as parseLine,
+// Real AI parse through /api/ai-parse (Cloudflare Workers AI). Returns items in the same shape as parseLine,
 // or null when AI is unavailable (demo, offline, no key, daily limit) so callers keep the local result.
 const aiCache = new Map();
 export function aiParse(text, { sb, cats, accts, now, image }) {
@@ -46,12 +46,15 @@ export function aiParse(text, { sb, cats, accts, now, image }) {
   if (!sb || (!image && text.length < 4)) return Promise.resolve(null);
   if (!image && aiCache.has(text)) return aiCache.get(text);
   const catIds = new Set((cats || []).map(c => c.id)), acctIds = new Set((accts || []).map(a => a.id)), t = todayStr();
-  const p = sb.functions.invoke('ai-parse', { body: {
-    text, today: t, now, image,
-    categories: (cats || []).filter(c => !c.hidden).map(c => ({ id: c.id, name: c.name, type: c.type })),
-    accounts: (accts || []).map(a => ({ id: a.id, name: a.name, type: a.type }))
-  } }).then(({ data, error }) => {
-    if (error || !data || !Array.isArray(data.items)) return null;
+  const p = sb.auth.getSession().then(({ data: ses }) => {
+    const tok = ses && ses.session && ses.session.access_token; if (!tok) return null;
+    return fetch('/api/ai-parse', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({
+      text, today: t, now, image,
+      categories: (cats || []).filter(c => !c.hidden).map(c => ({ id: c.id, name: c.name, type: c.type })),
+      accounts: (accts || []).map(a => ({ id: a.id, name: a.name, type: a.type }))
+    }) }).then(r => r.ok ? r.json() : null);
+  }).then(data => {
+    if (!data || !Array.isArray(data.items)) return null;
     const items = data.items.map(it => ({
       date: /^\d{4}-\d{2}-\d{2}$/.test(it.date) && it.date <= t ? it.date : t,
       time: /^\d{2}:\d{2}$/.test(it.time) ? it.time : '',
