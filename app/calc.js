@@ -7,6 +7,8 @@ export const book = () => S.books.find(b => b.id === cur.bookId) || S.books[0];
 export const bookTx = () => S.txs.filter(t => t.book_id === book().id && !t.deleted_at);
 export const cats = type => S.cats.filter(c => c.book_id === book().id && (!type || c.type === type)).sort((a, b) => a.sort - b.sort);
 export const accts = () => S.accts.filter(a => a.book_id === book().id).sort((a, b) => a.sort - b.sort);
+// The account new entries use by default: the one marked 주 계좌, else the first bank/check account, else the first.
+export const mainAcct = () => { const l = accts(); return l.find(a => (a.detail || {}).main) || l.find(a => a.type === 'bank' || a.type === 'check') || l[0] || null; };
 export const recs = () => S.recs.filter(r => r.book_id === book().id);
 export const assets = () => S.assets.filter(a => a.book_id === book().id).sort((a, b) => a.sort - b.sort);
 export const catOf = id => S.cats.find(c => c.id === id);
