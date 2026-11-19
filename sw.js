@@ -4,7 +4,7 @@
    - 글꼴·라이브러리 CDN: 저장본 즉시 사용 + 뒤에서 갱신(stale-while-revalidate)
    - Supabase API(동기화)와 GET이 아닌 요청은 절대 가로채거나 저장하지 않음
    배포할 때 index.html을 바꿨다면 VERSION 숫자를 올려 주세요. */
-const VERSION = 'ledger-v2.0.5';
+const VERSION = 'ledger-v2.0.6';
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 const RUNTIME_MAX = 160;
