@@ -10,14 +10,14 @@ const SUPABASE_URL = 'https://wpakjtlyfxwnrsuxkyjv.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_kw1ZI6jTAnvQqKGUUYIZVA_v7jRZjfl'; // public key; RLS protects data
 const DAILY_LIMIT = 50;
 // Tried in order; a busy (503), missing (404) or rate-limited (429) model moves on to the next one.
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+const GEMINI_MODELS = ['gemini-3.5-flash', 'gemini-3-flash', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
 
 async function gemini(env, system, text, img) {
   const list = env.GEMINI_MODEL ? [env.GEMINI_MODEL, ...GEMINI_MODELS.filter(m => m !== env.GEMINI_MODEL)] : GEMINI_MODELS;
   const errs = [];
   for (const m of list) {
     try { return await geminiOne(env, m, system, text, img); }
-    catch (e) { errs.push(String(e && e.message || e)); if (!/http (503|404|429|500)/.test(String(e && e.message))) break; }
+    catch (e) { errs.push(String(e && e.message || e)); if (!/http (503|404|429|500|400)/.test(String(e && e.message))) break; }
   }
   throw new Error(errs.join(' / '));
 }
