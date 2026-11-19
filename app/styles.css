@@ -287,7 +287,7 @@ button.tx:hover { background: var(--soft); }
 /* chart hover */
 .chart { position: relative; }
 .chart .hit { cursor: pointer; }
-.chart .hit.on { fill: color-mix(in srgb, var(--ink) 6%, transparent); }
+.chart .hit:hover { fill: color-mix(in srgb, var(--ink) 5%, transparent); }
 .ctip { position: absolute; z-index: 5; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 14px; background: var(--ink); color: var(--bg); font-size: var(--t3); pointer-events: none; white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
 .ctip span { display: flex; align-items: center; gap: 6px; }
 .ctip i { width: 8px; height: 8px; border-radius: 99px; display: inline-block; }
