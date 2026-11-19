@@ -378,3 +378,16 @@ button.tx.r-out:hover { background: color-mix(in srgb, var(--coral) 10%, transpa
 .fp b { display: block; height: 100%; border-radius: 99px; background: var(--ink); opacity: .6; }
 .fp b.good { background: var(--in); opacity: 1; } .fp b.bad { background: var(--coral); opacity: 1; }
 @media (max-width: 959px) { .score .facs { grid-template-columns: minmax(0, 1fr); } }
+/* Hero breathing room (user 2026-11-19: too dense) */
+.hero.s12 { padding: 36px; }
+.hgrid { gap: 36px; }
+.hero.s12 .hl .num { margin: 10px 0 4px; }
+.hero.s12 .hmore { margin-top: 24px; gap: 10px; }
+.hero.s12 .hl .hacc { margin: 22px 0 28px; }
+.hero.s12 .stats { padding-top: 22px; }
+.htiles { gap: 14px; }
+.htile { padding: 20px 22px; gap: 10px; min-height: 176px; }
+@media (max-width: 959px) { .hero.s12 { padding: 24px; } .hero.s12 .hl .hacc { margin: 16px 0 20px; } .hstrip .htile { min-height: 150px; padding: 18px; } }
+.hero.s12 .stats > div { align-items: center; text-align: center; }
+.hero.s12 .stats > div + div { border-left: 1px solid color-mix(in srgb, var(--on-accent) 14%, transparent); }
+@media (max-width: 959px) { .hero.s12 .stats > div + div { border-left: 0; } .hero.s12 .stats.three > div:nth-child(3) { justify-content: center; gap: 10px; } }

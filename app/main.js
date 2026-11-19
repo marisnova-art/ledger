@@ -131,7 +131,7 @@ function heroTiles(m) {
   // 2. per-day money
   const bars = (rows) => { const top = Math.max(1, ...rows.map(r => r[1])); return '<div class="hbars">' + rows.map(r => '<div class="hb"><span class="small">' + r[0] + '</span><i><b style="width:' + Math.round(r[1] / top * 100) + '%"></b></i><span class="small">' + man(r[1]) + '</span></div>').join('') + '</div>'; };
   if (isNow) { const left = Math.max(0, o.end || 0), dl = dim - day + 1, per = Math.round(left / dl), avg = Math.round(s.exp / Math.max(1, day));
-    out.push(tile('하루 써도 되는 돈', won(per), bars([['남은 ' + dl + '일', per], ['지금 평균', avg]]))); }
+    out.push(tile('하루 써도 되는 돈', per > 0 ? won(per) : '월말 예상이 마이너스예요', bars([['남은 ' + dl + '일', per], ['지금 평균', avg]]))); }
   else { const avg = Math.round(s.exp / dim), pa = Math.round(monthSum(pm).exp / dimOfM(pm));
     out.push(tile('하루 평균 지출', won(avg), bars([[monthLabel(m), avg], [monthLabel(pm), pa]]))); }
   // 3. upcoming payments (7 days) / past: spending by day
