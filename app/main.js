@@ -184,7 +184,7 @@ function homeView() {
     '<section class="card s6 m8">' + compCard(m, 'income') + '</section>' +
     scoreCard(m) +
     '<section class="card chart s6 m9"><div class="card-h"><span class="strong">최근 ' + nM + '개월</span><span class="legend small muted"><span><i style="background:var(--accent)"></i>들어온 돈</span><span><i style="background:var(--coral)"></i>나간 돈</span><span>— 남은 돈</span></span></div>' + '<div class="cbox">' + barChart(s6, 760) + '</div>' +
-      '<div class="stats cstats" style="margin-top:0">' + chartStats('월평균 ', avgI, avgE) + '</div></section>';
+      '<div class="stats three cstats" style="margin-top:0">' + chartStats('월평균 ', avgI, avgE) + '</div></section>';
 }
 
 function advFilter(list, a) {

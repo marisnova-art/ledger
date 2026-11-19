@@ -391,3 +391,6 @@ button.tx.r-out:hover { background: color-mix(in srgb, var(--coral) 10%, transpa
 .hero.s12 .stats > div { align-items: center; text-align: center; }
 .hero.s12 .stats > div + div { border-left: 1px solid color-mix(in srgb, var(--on-accent) 14%, transparent); }
 @media (max-width: 959px) { .hero.s12 .stats > div + div { border-left: 0; } .hero.s12 .stats.three > div:nth-child(3) { justify-content: center; gap: 10px; } }
+.chart .cstats > div { align-items: center; text-align: center; }
+.chart .cstats > div + div { border-left: 1px solid var(--line); }
+@media (max-width: 959px) { .chart .cstats > div + div { border-left: 0; } .chart .cstats.three > div:nth-child(3), .chart .cstats > div:nth-child(3) { justify-content: center; gap: 10px; } }
