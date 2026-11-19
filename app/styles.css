@@ -415,3 +415,4 @@ button.tx.r-out:hover { background: color-mix(in srgb, var(--coral) 10%, transpa
 /* No zoom on mobile: block double-tap zoom, and keep inputs at 16px so iOS doesn't zoom on focus */
 html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (max-width: 959px) { input, select, textarea { font-size: 16px; } }
+.hero.s12 .hmore + .stats { margin-top: 22px; }
