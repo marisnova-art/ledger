@@ -54,7 +54,7 @@ export function score(m) {
 // Month-end outlook: current net minus recurring items not yet recorded this month.
 export function outlook(m) {
   const s = monthSum(m), t = todayStr();
-  if (m !== ym(t)) return null;
+  if (m !== ym(t)) { const d0 = dimOf(m); return { end: s.inc - s.exp, out: 0, inn: 0, n: 0, day: d0, dim: d0, used: s.inc ? s.exp / s.inc : null, past: true }; }
   const left = recs().filter(r => r.active !== false && !recDone(r, m));
   const out = left.filter(r => r.type === 'expense').reduce((a, r) => a + Number(r.amount || 0), 0);
   const inn = left.filter(r => r.type === 'income').reduce((a, r) => a + Number(r.amount || 0), 0);
