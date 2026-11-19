@@ -24,7 +24,7 @@ const bookIconHtml = b => b.image_url ? '<img src="' + esc(b.image_url) + '" alt
 const KIND = { personal: '개인', business: '개인사업자', corp: '법인' };
 function txRow(t, opts = {}) {
   const c = catOf(t.category_id), a = acctOf(t.account_id), inc = t.type === 'income';
-  const sub = [c ? c.name : '분류 없음', a ? a.name : '', opts.date ? shortDate(t.date) + ' ' + weekday(t.date) : '', t.time || ''].filter(Boolean).join(' · ');
+  const sub = [c ? c.name : '분류 없음', a ? a.name : '', opts.date ? shortDate(t.date) + (isMobile() ? '' : ' ' + weekday(t.date)) : '', isMobile() ? '' : t.time || ''].filter(Boolean).join(' · ');
   return '<button class="tx ' + (inc ? 'r-in' : 'r-out') + '" data-tx="' + t.id + '"><span class="ic ' + (inc ? 'inc' : 'exp') + '">' + icon(catIcon(c)) + '</span><span class="mid"><div>' + esc(t.description || t.vendor || (c && c.name) || '거래') + (t.recurring_id ? '<span class="rec">' + icon('repeat') + '반복</span>' : '') + '</div><div class="small muted">' + esc(sub) + '</div></span><span class="amt ' + (inc ? 'up' : 'down') + '">' + (inc ? '+' : '−') + won(t.amount) + '</span></button>';
 }
 function dayGroups(list) {
