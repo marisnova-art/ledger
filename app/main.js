@@ -53,7 +53,7 @@ function barChart(s, W = 760, act = s.length - 1) {
     const cx = L + gw * i + gw / 2, last = i === act, op = last ? 1 : .45;
     const pill = (x, v, gid) => { const h = Math.max(bw, y(0) - y(v)); return v ? '<rect x="' + x + '" y="' + (y(0) - h) + '" width="' + bw + '" height="' + h + '" rx="' + bw / 2 + '" fill="url(#' + gid + ')" opacity="' + op + '"/>' : ''; };
     bars += pill(cx - bw - 4, d.inc, 'gI') + pill(cx + 4, d.exp, 'gE');
-    bars += '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle" font-size="13" fill="' + (last ? 'var(--ink)' : 'var(--muted)') + '" font-weight="' + (last ? 600 : 400) + '">' + monthLabel(d.m) + '</text>';
+    bars += '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle" font-size="13" fill="' + (last ? 'var(--ink)' : 'var(--muted)') + '">' + monthLabel(d.m) + '</text>';
     pts.push([cx, y(Math.max(0, d.inc - d.exp)), d.inc - d.exp]);
     hits += '<rect class="hit" x="' + (L + gw * i) + '" y="' + Tp + '" width="' + gw + '" height="' + (H - Tp) + '" fill="transparent" data-m="' + d.m + '" data-inc="' + d.inc + '" data-exp="' + d.exp + '"/>';
   });
@@ -62,7 +62,7 @@ function barChart(s, W = 760, act = s.length - 1) {
   const lp = pts[act], tag = (lp[2] >= 0 ? '+' : '−') + Math.round(Math.abs(lp[2]) / 10000).toLocaleString('ko-KR') + '만', tw = tag.length * 8 + 20, ty = Math.max(2, lp[1] - 44);
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="최근 6개월 들어온 돈과 나간 돈"><defs><linearGradient id="gI" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent)" stop-opacity=".35"/></linearGradient><linearGradient id="gE" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--coral)"/><stop offset="1" stop-color="var(--coral)" stop-opacity=".35"/></linearGradient><radialGradient id="gH"><stop offset="0" stop-color="var(--accent)" stop-opacity=".45"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></radialGradient></defs>' + g + bars +
     '<path d="' + line + '" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round" opacity=".85"/><circle cx="' + lp[0] + '" cy="' + lp[1] + '" r="28" fill="url(#gH)"/><circle cx="' + lp[0] + '" cy="' + lp[1] + '" r="5.5" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/>' +
-    '<g transform="translate(' + Math.min(W - tw, lp[0] - tw / 2) + ' ' + ty + ')"><rect width="' + tw + '" height="26" rx="13" fill="var(--accent)"/><text x="' + tw / 2 + '" y="17.5" text-anchor="middle" font-size="13" font-weight="600" fill="var(--on-accent)">' + tag + '</text></g>' + hits + '</svg>';
+    '<g transform="translate(' + Math.min(W - tw, lp[0] - tw / 2) + ' ' + ty + ')"><rect width="' + tw + '" height="26" rx="13" fill="var(--accent)"/><text x="' + tw / 2 + '" y="17.5" text-anchor="middle" font-size="13" fill="var(--on-accent)">' + tag + '</text></g>' + hits + '</svg>';
 }
 function areaChart(vals, labels) {
   const W = 760, H = 220, L = 12, R = 12, Tp = 44, B = 30, n = vals.length;
@@ -74,7 +74,7 @@ function areaChart(vals, labels) {
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="최근 6개월 순자산"><defs><linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".35"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>' +
     labels.map((m, i) => '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="' + (i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle') + '" font-size="13" fill="' + (i === n - 1 ? 'var(--ink)' : 'var(--muted)') + '">' + m + '</text>').join('') +
     '<path d="' + line + ' L' + x(n - 1) + ' ' + (H - B) + ' L' + x(0) + ' ' + (H - B) + ' Z" fill="url(#gA)"/><path d="' + line + '" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round"/>' +
-    '<circle cx="' + x(n - 1) + '" cy="' + y(vals[n - 1]) + '" r="5.5" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/><g transform="translate(' + (x(n - 1) - tw) + ' ' + Math.max(2, y(vals[n - 1]) - 40) + ')"><rect width="' + tw + '" height="26" rx="13" fill="var(--accent)"/><text x="' + tw / 2 + '" y="17.5" text-anchor="middle" font-size="13" font-weight="600" fill="var(--on-accent)">' + tag + '</text></g></svg>';
+    '<circle cx="' + x(n - 1) + '" cy="' + y(vals[n - 1]) + '" r="5.5" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/><g transform="translate(' + (x(n - 1) - tw) + ' ' + Math.max(2, y(vals[n - 1]) - 40) + ')"><rect width="' + tw + '" height="26" rx="13" fill="var(--accent)"/><text x="' + tw / 2 + '" y="17.5" text-anchor="middle" font-size="13" fill="var(--on-accent)">' + tag + '</text></g></svg>';
 }
 const OP = [1, .74, .52, .36, .24, .16];
 function assetBar() {
@@ -97,7 +97,7 @@ function compCard(m, type) {
   if (!sum) return head + '<div class="empty small">' + monthLabel(m) + '에는 ' + (isE ? '나간 돈이' : '들어온 돈이') + ' 없어요</div>';
   const R = 70, C = 2 * Math.PI * R; let off = 0;
   const seg = rows.map((r, i) => { const len = r.v / sum * C, el = '<circle r="' + R + '" cx="90" cy="90" fill="none" stroke="' + col(i) + '" stroke-width="26" stroke-dasharray="' + Math.max(0, len - 2) + ' ' + C + '" stroke-dashoffset="' + (-off) + '" transform="rotate(-90 90 90)"/>'; off += len; return el; }).join('');
-  return head + '<div class="comp"><svg viewBox="0 0 180 180" role="img" aria-label="' + (isE ? '지출' : '수입') + ' 구성">' + seg + '<text x="90" y="86" text-anchor="middle" font-size="13" fill="var(--muted)">' + (isE ? '나간 돈' : '들어온 돈') + '</text><text x="90" y="106" text-anchor="middle" font-size="16" font-weight="600" fill="var(--ink)">' + man(sum) + '</text></svg>' +
+  return head + '<div class="comp"><svg viewBox="0 0 180 180" role="img" aria-label="' + (isE ? '지출' : '수입') + ' 구성">' + seg + '<text x="90" y="86" text-anchor="middle" font-size="13" fill="var(--muted)">' + (isE ? '나간 돈' : '들어온 돈') + '</text><text x="90" y="106" text-anchor="middle" font-size="16" fill="var(--ink)">' + man(sum) + '</text></svg>' +
     '<div class="clist">' + rows.map((r, i) => '<button class="crow" data-compcat="' + (r.c ? r.c.id : '') + '"><i style="background:' + col(i) + '"></i><span class="mid">' + esc(r.c ? r.c.name : '분류 없음') + '</span><b>' + won(r.v) + '</b><span class="small muted">' + Math.round(r.v / sum * 100) + '%</span></button>').join('') + '</div></div>';
 }
 
