@@ -3,7 +3,7 @@ import { CONFIG } from './config.js';
 import { S, initClient, signIn, signOut, loadAll, loadDemo, put, putMany, remove, putSnap, restoreTx, purgeTx, restoreItem, purgeItem, uploadReceipt, receiptUrl } from './store.js';
 import { CI, CI_GROUPS } from './icons.js';
 import { icon, esc, suggestIcons, won, signed, man, uid, todayStr, nowTime, ym, addMonths, addDays, monthLabel, weekday, shortDate, iconForName, acctIcon, acctLabel, ACCT_TYPES } from './util.js';
-import { cur, book, bookTx, sumOf, cats, accts, mainAcct, recs, assets, catOf, acctOf, monthSum, monthTx, series, score, outlook, recThisMonth, dueDate, recDone, computeAlerts, dismiss, markSeen, ASSET_TYPES, assetLabel, assetIcon, signedVal, netWorthAt } from './calc.js';
+import { T, cur, book, bookTx, sumOf, cats, accts, mainAcct, recs, assets, catOf, acctOf, monthSum, monthTx, series, score, outlook, recThisMonth, dueDate, recDone, computeAlerts, dismiss, markSeen, ASSET_TYPES, assetLabel, assetIcon, signedVal, netWorthAt } from './calc.js';
 import { parseLine, aiParse, imageToB64, imageToBlob, aiInfo } from './ai.js';
 
 const app = document.getElementById('app');
@@ -64,7 +64,7 @@ function barChart(s, W = 760, act = s.length - 1) {
   let line = 'M' + pts[0][0] + ' ' + pts[0][1];
   for (let i = 0; i < pts.length - 1; i++) { const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2; const yb = y(0), c1 = Math.min(yb, p1[1] + (p2[1] - p0[1]) / 6), c2 = Math.min(yb, p2[1] - (p3[1] - p1[1]) / 6); line += ' C' + (p1[0] + (p2[0] - p0[0]) / 6) + ' ' + c1 + ',' + (p2[0] - (p3[0] - p1[0]) / 6) + ' ' + c2 + ',' + p2[0] + ' ' + p2[1]; }
   const lp = pts[act], tag = (lp[2] >= 0 ? '+' : '−') + Math.round(Math.abs(lp[2]) / 10000).toLocaleString('ko-KR') + '만', tw = tag.length * 8 + 20, ty = Math.max(2, lp[1] - 44);
-  return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="최근 6개월 들어온 돈과 나간 돈"><defs><linearGradient id="gI" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent)" stop-opacity=".35"/></linearGradient><linearGradient id="gE" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--coral)"/><stop offset="1" stop-color="var(--coral)" stop-opacity=".35"/></linearGradient><radialGradient id="gH"><stop offset="0" stop-color="var(--accent)" stop-opacity=".45"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></radialGradient></defs>' + g + bars +
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="최근 6개월 ' + T('in') + '과 ' + T('out') + '"><defs><linearGradient id="gI" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent)" stop-opacity=".35"/></linearGradient><linearGradient id="gE" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--coral)"/><stop offset="1" stop-color="var(--coral)" stop-opacity=".35"/></linearGradient><radialGradient id="gH"><stop offset="0" stop-color="var(--accent)" stop-opacity=".45"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></radialGradient></defs>' + g + bars +
     '<path d="' + line + '" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round" opacity=".85"/><circle cx="' + lp[0] + '" cy="' + lp[1] + '" r="28" fill="url(#gH)"/><circle cx="' + lp[0] + '" cy="' + lp[1] + '" r="5.5" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/>' +
     '<g transform="translate(' + Math.min(W - tw, lp[0] - tw / 2) + ' ' + ty + ')"><rect width="' + tw + '" height="26" rx="13" fill="var(--accent)"/><text x="' + tw / 2 + '" y="17.5" text-anchor="middle" font-size="13" fill="var(--on-accent)">' + tag + '</text></g>' + hits + '</svg>';
 }
@@ -98,10 +98,10 @@ function compCard(m, type) {
   const rows = Object.entries(by).map(([id, v]) => ({ c: catOf(id), v })).sort((a, b) => b.v - a.v), sum = rows.reduce((a, r) => a + r.v, 0);
   const col = i => 'color-mix(in srgb, ' + base + ' ' + Math.round(OP[Math.min(i, 5)] * 100) + '%, var(--mixbase))';
   const head = '<div class="card-h"><span class="strong">' + monthLabel(m) + ' ' + (isE ? '지출' : '수입') + ' 구성 <span class="small muted">' + rows.length + '개 분류</span></span><span class="small muted">' + (isE ? '−' : '+') + won(sum) + '</span></div>';
-  if (!sum) return head + '<div class="empty small">' + monthLabel(m) + '에는 ' + (isE ? '나간 돈이' : '들어온 돈이') + ' 없어요</div>';
+  if (!sum) return head + '<div class="empty small">' + monthLabel(m) + '에는 ' + (isE ? T('out') + '이' : T('in') + '이') + ' 없어요</div>';
   const R = 70, C = 2 * Math.PI * R; let off = 0;
   const seg = rows.map((r, i) => { const len = r.v / sum * C, el = '<circle r="' + R + '" cx="90" cy="90" fill="none" stroke="' + col(i) + '" stroke-width="26" stroke-dasharray="' + Math.max(0, len - 2) + ' ' + C + '" stroke-dashoffset="' + (-off) + '" transform="rotate(-90 90 90)"/>'; off += len; return el; }).join('');
-  return head + '<div class="comp"><svg viewBox="0 0 180 180" role="img" aria-label="' + (isE ? '지출' : '수입') + ' 구성">' + seg + '<text x="90" y="86" text-anchor="middle" font-size="13" fill="var(--muted)">' + (isE ? '나간 돈' : '들어온 돈') + '</text><text x="90" y="106" text-anchor="middle" font-size="16" fill="var(--ink)">' + man(sum) + '</text></svg>' +
+  return head + '<div class="comp"><svg viewBox="0 0 180 180" role="img" aria-label="' + (isE ? '지출' : '수입') + ' 구성">' + seg + '<text x="90" y="86" text-anchor="middle" font-size="13" fill="var(--muted)">' + (isE ? T('out') : T('in')) + '</text><text x="90" y="106" text-anchor="middle" font-size="16" fill="var(--ink)">' + man(sum) + '</text></svg>' +
     '<div class="clist">' + rows.map((r, i) => '<button class="crow" data-compcat="' + (r.c ? r.c.id : '') + '"><i style="background:' + col(i) + '"></i><span class="mid">' + esc(r.c ? r.c.name : '분류 없음') + '</span><b>' + won(r.v) + '</b><span class="small muted">' + Math.round(r.v / sum * 100) + '%</span></button>').join('') + '</div></div>';
 }
 
@@ -120,8 +120,8 @@ function heroMore(m) {
   if (!o) return '';
   const used = o.used == null ? null : Math.round(o.used * 100), time = Math.round(o.day / o.dim * 100), tot = balancesAt(m).tot;
   return '<div class="hmore"><div class="kv"><span class="lbl2">' + (o.past ? monthLabel(m) + ' 남긴 비율' : monthLabel(m) + ' 말 예상 잔액') + '</span><b>' + (o.past ? (used == null ? '—' : (100 - used) + '%') : won(tot + o.inn - o.out)) + '</b></div>' +
-    '<div class="ptrack" title="들어온 돈의 ' + (used || 0) + '% 사용 · 이번 달 ' + time + '% 지남"><i style="width:' + Math.min(100, used || 0) + '%"></i>' + (o.past ? '' : '<em style="left:' + time + '%"></em>') + '</div><div class="kv small"><span>' + (used == null ? '들어온 돈 없음' : monthLabel(m) + ' 들어온 돈의 ' + used + '% 썼어요') + '</span><span>' + (o.past ? monthLabel(m) + ' 마감' : time + '% 지남') + '</span></div>' +
-    '<div class="small hcap">' + (o.past ? '들어온 돈 중 쓰지 않고 남긴 비율' : '지금 잔액에 이번 달 남은 반복 거래를 더하고 뺀 예상') + '</div></div>';
+    '<div class="ptrack" title="' + T('in') + '의 ' + (used || 0) + '% 사용 · 이번 달 ' + time + '% 지남"><i style="width:' + Math.min(100, used || 0) + '%"></i>' + (o.past ? '' : '<em style="left:' + time + '%"></em>') + '</div><div class="kv small"><span>' + (used == null ? T('in') + ' 없음' : monthLabel(m) + ' ' + T('in') + '의 ' + used + '% 썼어요') + '</span><span>' + (o.past ? monthLabel(m) + ' 마감' : time + '% 지남') + '</span></div>' +
+    '<div class="small hcap">' + (o.past ? T('in') + ' 중 쓰지 않고 남긴 비율' : '지금 잔액에 이번 달 남은 반복 거래를 더하고 뺀 예상') + '</div></div>';
 }
 // Hero tiles: small numbers with a mini chart each. PC: inside the hero card; mobile: a swipeable strip below it.
 function heroTiles(m) {
@@ -169,7 +169,7 @@ function heroTiles(m) {
   const bc = {}; monthTx(m).forEach(x => { if (x.type === 'expense') bc[x.category_id] = (bc[x.category_id] || 0) + Number(x.amount); });
   const rows = Object.entries(bc).sort((a, b) => b[1] - a[1]), tot = rows.reduce((a, r) => a + r[1], 0), top3 = rows.slice(0, 3), OPS = [1, .55, .3];
   const nm = id => (catOf(id) || {}).name || '분류 없음';
-  out.push(tile(top3.length ? 'data-compcat="' + (top3[0][0] || '') + '"' : 'data-go="list"', 'pie', '많이 쓴 분류', rows.length ? rows.length + '개 분류' : '', top3.length ? esc(nm(top3[0][0])) + ' ' + won(top3[0][1]) : '없어요', top3.length ? '나간 돈의 ' + Math.round(top3[0][1] / tot * 100) + '%' : '',
+  out.push(tile(top3.length ? 'data-compcat="' + (top3[0][0] || '') + '"' : 'data-go="list"', 'pie', '많이 쓴 분류', rows.length ? rows.length + '개 분류' : '', top3.length ? esc(nm(top3[0][0])) + ' ' + won(top3[0][1]) : '없어요', top3.length ? T('out') + '의 ' + Math.round(top3[0][1] / tot * 100) + '%' : '',
     '<div class="hstack">' + top3.map((r, i) => '<b style="width:' + (r[1] / tot * 100) + '%;opacity:' + OPS[i] + '"></b>').join('') + '</div><span class="small hleg">' + top3.slice(0, 2).map((r, i) => '<span><i style="opacity:' + OPS[i] + '"></i>' + esc(nm(r[0])) + ' ' + Math.round(r[1] / tot * 100) + '%</span>').join('') + '</span>'));
   return out;
 }
@@ -193,21 +193,21 @@ function homeView() {
   const col = isP ? 's4' : 's6';
   const tiles = heroTiles(m), mob = isMobile();
   const past = m < ym(todayStr()), tot = balancesAt(m).tot;
-  return '<section class="card hero s12 m1"><div class="hgrid"><div class="hl"><div class="card-h">' + mstep('hm', m, ym(todayStr())).replace('<span>' + m.slice(0, 4) + '년 ' + monthLabel(m), '<span class="muted">' + (past ? monthLabel(m) + ' 말 내 돈' : monthLabel(m) + ' 내 돈 · 오늘 기준')) + '</div>' +
+  return '<section class="card hero s12 m1"><div class="hgrid"><div class="hl"><div class="card-h">' + mstep('hm', m, ym(todayStr())).replace('<span>' + m.slice(0, 4) + '년 ' + monthLabel(m), '<span class="muted">' + (past ? monthLabel(m) + ' 말 ' + T('cash') : monthLabel(m) + ' ' + T('cash') + ' · 오늘 기준')) + '</div>' +
       '<div class="num">' + won(tot) + '</div><div class="small hcap">' + (accts().length ? (past ? monthLabel(m) + ' 마지막 날 ' : '오늘 ') + '계좌와 현금 잔액을 모두 더한 금액이에요' : '계좌·현금을 추가하면 잔액 합계가 보여요') + '</div>' + heroAccts(m) +
-      '<div class="stats three"><div><span class="small muted lbl in"><svg viewBox="0 0 18 18"><path d="M5 9h8M9 5v8"/></svg>' + (isMobile() ? '' : monthLabel(m) + ' ') + '들어온 돈</span><span class="v">+' + won(now.inc) + '</span></div><div><span class="small muted lbl out"><svg viewBox="0 0 18 18"><path d="M5 9h8"/></svg>' + (isMobile() ? '' : monthLabel(m) + ' ') + '나간 돈</span><span class="v">−' + won(now.exp) + '</span></div><div title="지난달보다 ' + signed(diff) + '"><span class="small muted lbl ' + (diff >= 0 ? 'in' : 'out') + '"><svg viewBox="0 0 18 18">' + (diff >= 0 ? '<path d="M9 13V5M5.5 8.5L9 5l3.5 3.5"/>' : '<path d="M9 5v8M5.5 9.5L9 13l3.5-3.5"/>') + '</svg>' + (isMobile() ? '' : monthLabel(m) + ' ') + '남긴 돈</span><span class="v">' + signed(net) + '</span></div></div>' +
+      '<div class="stats three"><div><span class="small muted lbl in"><svg viewBox="0 0 18 18"><path d="M5 9h8M9 5v8"/></svg>' + (isMobile() ? '' : monthLabel(m) + ' ') + T('in') + '</span><span class="v">+' + won(now.inc) + '</span></div><div><span class="small muted lbl out"><svg viewBox="0 0 18 18"><path d="M5 9h8"/></svg>' + (isMobile() ? '' : monthLabel(m) + ' ') + T('out') + '</span><span class="v">−' + won(now.exp) + '</span></div><div title="지난달보다 ' + signed(diff) + '"><span class="small muted lbl ' + (diff >= 0 ? 'in' : 'out') + '"><svg viewBox="0 0 18 18">' + (diff >= 0 ? '<path d="M9 13V5M5.5 8.5L9 5l3.5 3.5"/>' : '<path d="M9 5v8M5.5 9.5L9 13l3.5-3.5"/>') + '</svg>' + (isMobile() ? '' : monthLabel(m) + ' ') + T('net') + '</span><span class="v">' + signed(net) + '</span></div></div>' +
       heroMore(m) + '</div>' +
       (mob ? '' : '<div class="hr"><div class="htiles">' + tiles.join('') + '</div></div>') + '</div></section>' +
     (mob ? '<div class="hstrip m2">' + tiles.join('') + '</div>' : '') +
     '<section class="card s12 m3"><div class="card-h"><span class="strong">최근 거래 <span class="small muted">' + recent.length + '건</span></span><button class="golink" data-go="list">전체 보기 ›</button></div><div>' + (shown.length ? shown.map(t => txRow(t, { date: true })).join('') : '<div class="empty">아직 거래가 없어요. 거래 추가로 시작해 보세요.</div>') + '</div>' + (rest > 0 ? '<button class="more" data-more>' + Math.min(10, rest) + '건 더 보기</button>' : '') + '</section>' +
     '<section class="card ' + col + ' m4"><div class="card-h"><span class="strong">이번 달 반복 거래 <span class="small muted">' + rt.filter(x => x.done).length + '/' + rt.length + ' 완료</span></span>' + '<button class="golink" data-go="settings">관리 ›</button></div>' +
-      (rt.length ? rt.slice().sort((a, b) => (a.done - b.done) || a.due.localeCompare(b.due)).slice(0, 7).map(({ r, due, done }) => '<button class="row" data-rec="' + r.id + '"><span class="mid"><div>' + esc(r.name) + '</div><div class="small muted">' + shortDate(due) + ' · ' + (done ? '완료' : '예정') + '</div></span><span class="small strong ' + (r.type === 'income' ? 'up' : 'down') + '">' + won(r.amount) + '</span></button>').join('') + '' : '<div class="empty small">등록된 반복 거래가 없어요</div>') + '</section>' +
+      (rt.length ? rt.slice().sort((a, b) => (a.done - b.done) || a.due.localeCompare(b.due)).slice(0, 7).map(({ r, due, done }) => '<button class="row" data-rec="' + r.id + '"><span class="mid"><div>' + esc(r.name) + '</div><div class="small muted">' + shortDate(due) + ' · ' + (done ? '완료' : '예정') + '</div></span><span class="small strong ' + (r.type === 'income' ? 'up' : 'down') + '">' + won(r.amount) + '</span></button>').join('') : '<div class="empty small">등록된 반복 거래가 없어요</div>') + '</section>' +
     '<section class="card ' + col + ' m5"><div class="card-h"><span class="strong">알림 <span class="small muted">' + (alerts.length ? alerts.length + '건' : '') + '</span></span><button class="golink" data-go="alerts">전체 보기 ›</button></div>' + (alerts.length ? alerts.slice(0, 5).map(a => alertRow(a, true)).join('') : '<div class="empty small">지금은 알릴 게 없어요</div>') + '</section>' +
     (isP ? '<section class="card s4 m6"><div class="card-h"><span class="strong">내 자산</span><button class="golink" data-go="assets">자산 보기 ›</button></div><div class="kv"><span class="muted">순자산</span><span class="strong">' + won(nw) + '</span></div><div class="kv small"><span class="muted">지난달보다</span><span class="' + (nwd >= 0 ? 'up' : 'down') + '">' + signed(nwd) + '</span></div>' + (assets().length ? assetBar() + '<div>' + assets().slice().sort((a, b) => Math.abs(signedVal(b)) - Math.abs(signedVal(a))).slice(0, 5).map(a => '<button class="row" data-asset="' + a.id + '"><span class="ic ' + (a.type === 'loan' ? 'exp' : 'inc') + '">' + icon(assetIcon(a.type)) + '</span><span class="mid"><div>' + esc(a.name) + '</div><div class="small muted">' + assetLabel(a.type) + '</div></span><span class="small strong' + (a.type === 'loan' ? ' down' : '') + '">' + won(signedVal(a)) + '</span></button>').join('') + '</div>' : '<div class="small muted">예금, 주식, 코인, 부동산, 대출을 적어 두면 순자산 추이를 보여드려요.</div>') + '</section>' : '') +
     '<section class="card s6 m7">' + compCard(m, 'expense') + '</section>' +
     '<section class="card s6 m8">' + compCard(m, 'income') + '</section>' +
     scoreCard(m) +
-    '<section class="card chart s6 m9"><div class="card-h"><span class="strong">최근 ' + nM + '개월</span><span class="legend small muted"><span><i style="background:var(--accent)"></i>들어온 돈</span><span><i style="background:var(--coral)"></i>나간 돈</span><span>— 남은 돈</span></span></div>' + '<div class="cbox">' + barChart(s6, 760) + '</div>' +
+    '<section class="card chart s6 m9"><div class="card-h"><span class="strong">최근 ' + nM + '개월</span><span class="legend small muted"><span><i style="background:var(--accent)"></i>' + T('in') + '</span><span><i style="background:var(--coral)"></i>' + T('out') + '</span><span>— ' + T('left') + '</span></span></div>' + '<div class="cbox">' + barChart(s6, 760) + '</div>' +
       '<div class="stats three cstats" style="margin-top:0">' + chartStats('월평균 ', avgI, avgE) + '</div></section>';
 }
 
@@ -230,7 +230,7 @@ function advFilter(list, a) {
 function advSummary(a) {
   const p = [];
   p.push((a.from ? a.from.replace('-', '.') : '처음') + ' ~ ' + (a.to ? a.to.replace('-', '.') : '지금'));
-  if (a.kind && a.kind !== 'all') p.push(a.kind === 'income' ? '들어온 돈' : '나간 돈');
+  if (a.kind && a.kind !== 'all') p.push(a.kind === 'income' ? T('in') : T('out'));
   if (a.min || a.max) p.push((a.min ? won(a.min) : '') + ' ~ ' + (a.max ? won(a.max) : ''));
   if (a.cats && a.cats.length) p.push(a.cats.map(id => (catOf(id) || {}).name).filter(Boolean).join(', '));
   if (a.accts && a.accts.length) p.push(a.accts.map(id => (acctOf(id) || {}).name).filter(Boolean).join(', '));
@@ -260,9 +260,9 @@ function listView() {
     : mstep('lm', m, ym(todayStr())) + '<button class="btn-ghost" data-advopen>' + icon('search') + '상세 검색</button>';
   return '<section class="card s12"><div class="lv" data-live="a"><div class="card-h">' + head + '</div>' +
       (adv ? '<div class="small muted">' + esc(advSummary(adv)) + '</div>' : '') +
-      '<div class="stats four"><div><span class="small muted">거래</span><span class="v">' + list.length + '건</span></div><div><span class="small muted">들어온 돈</span><span class="v up">+' + won(s.inc) + '</span></div><div><span class="small muted">나간 돈</span><span class="v down">−' + won(s.exp) + '</span></div><div><span class="small muted">남은 돈</span><span class="v">' + signed(s.inc - s.exp) + '</span></div></div>' +
+      '<div class="stats four"><div><span class="small muted">거래</span><span class="v">' + list.length + '건</span></div><div><span class="small muted">' + T('in') + '</span><span class="v up">+' + won(s.inc) + '</span></div><div><span class="small muted">' + T('out') + '</span><span class="v down">−' + won(s.exp) + '</span></div><div><span class="small muted">' + T('left') + '</span><span class="v">' + signed(s.inc - s.exp) + '</span></div></div>' +
       '</div>' + (isMobile() && !adv ? '<label class="search m">' + icon('search') + '<input id="q" type="search" placeholder="내용·거래처·메모·분류로 찾기" value="' + esc(V.q) + '" autocomplete="off"></label>' : '') +
-      '<div class="lv" data-live="b"><div class="pills scroll"><button class="pill" data-kind="all" aria-pressed="' + (V.kind === 'all') + '">전체</button><button class="pill kin" data-kind="income" aria-pressed="' + (V.kind === 'income') + '">들어온 돈</button><button class="pill kout" data-kind="expense" aria-pressed="' + (V.kind === 'expense') + '">나간 돈</button>' +
+      '<div class="lv" data-live="b"><div class="pills scroll"><button class="pill" data-kind="all" aria-pressed="' + (V.kind === 'all') + '">전체</button><button class="pill kin" data-kind="income" aria-pressed="' + (V.kind === 'income') + '">' + T('in') + '</button><button class="pill kout" data-kind="expense" aria-pressed="' + (V.kind === 'expense') + '">' + T('out') + '</button>' +
         used.map(c => '<button class="pill" data-catf="' + c.id + '" aria-pressed="' + (V.catF === c.id) + '">' + icon(catIcon(c)) + esc(c.name) + '</button>').join('') + '</div>' +
       '<div>' + (list.length ? ((adv || q) ? monthGroups(sortTx(list)) : dayGroups(list)) : '<div class="empty">' + (adv || q ? '찾는 거래가 없어요' : '이 달에는 거래가 없어요') + '</div>') + '</div></div></section>';
 }
@@ -275,7 +275,7 @@ function openAdv() {
     '<div class="tx2"><div class="col">' +
       '<div class="grid2"><label class="field"><span>시작 월</span><input id="advFrom" type="month" value="' + (a.from || '') + '"></label><label class="field"><span>끝 월</span><input id="advTo" type="month" value="' + (a.to || '') + '" max="' + ym(todayStr()) + '"></label></div>' +
       '<div class="chips">' + [['이번 달', 0], ['3개월', -2], ['6개월', -5], ['올해', 'y'], ['전체', 'all']].map(([l, k]) => '<button class="chip" data-advq="' + k + '">' + l + '</button>').join('') + '</div>' +
-      '<div class="seg three"><button data-advk="all" aria-pressed="' + (a.kind === 'all') + '">전체</button><button class="inc" data-advk="income" aria-pressed="' + (a.kind === 'income') + '">들어온 돈</button><button class="exp" data-advk="expense" aria-pressed="' + (a.kind === 'expense') + '">나간 돈</button></div>' +
+      '<div class="seg three"><button data-advk="all" aria-pressed="' + (a.kind === 'all') + '">전체</button><button class="inc" data-advk="income" aria-pressed="' + (a.kind === 'income') + '">' + T('in') + '</button><button class="exp" data-advk="expense" aria-pressed="' + (a.kind === 'expense') + '">' + T('out') + '</button></div>' +
       '<div class="grid2"><label class="field"><span>최소 금액</span><input id="advMin" inputmode="numeric" data-won value="' + fmtW(a.min) + '" placeholder="0"></label><label class="field"><span>최대 금액</span><input id="advMax" inputmode="numeric" data-won value="' + fmtW(a.max) + '" placeholder="제한 없음"></label></div>' +
       '<label class="field"><span>내용·거래처·메모</span><input id="advText" value="' + esc(a.text || '') + '" placeholder="예: 쿠팡"></label>' +
       '<div class="field"><span>영수증</span><div class="seg three"><button data-advr="all" aria-pressed="' + (a.rc === 'all') + '">전체</button><button data-advr="yes" aria-pressed="' + (a.rc === 'yes') + '">영수증 있음</button><button data-advr="no" aria-pressed="' + (a.rc === 'no') + '">영수증 없음</button></div></div>' +
@@ -341,7 +341,7 @@ function settingsView() {
       (V.bpick ? '<div class="ipick">' + ['wallet', 'store', 'building', 'house', 'coin', 'card', 'cup', 'people', 'bag', 'heart', 'book', 'trend'].map(k => '<button data-bicon="' + k + '" aria-pressed="' + (!b.image_url && b.icon === k) + '" aria-label="' + k + '">' + icon(k) + '</button>').join('') + '</div><label class="btn-dash" style="cursor:pointer">' + icon('image') + '내 이미지 올리기<input type="file" accept="image/*" id="bImg" hidden></label>' + (b.image_url ? '<button class="btn-ghost" data-bimgclr>기본 아이콘 쓰기</button>' : '')
         : '<p class="small muted hint">아이콘을 누르면 기본 아이콘이나 내 이미지로 바꿀 수 있어요.</p>') + '</section>' +
     '<section class="card s7"><span class="strong">화면 모드</span><div class="seg">' + seg + '</div><p class="small muted hint">다크는 선명한 포인트 컬러, 라이트 아이보리는 밝고 따뜻한 바탕이에요.</p></section>' +
-    '<section class="card s8"><div class="card-h"><span class="strong">분류</span><span class="small muted">눌러서 이름·아이콘·숨김·삭제</span></div><div class="seg"><button class="exp" data-skind="expense" aria-pressed="' + (V.setKind === 'expense') + '">나간 돈 ' + cats('expense').length + '</button><button class="inc" data-skind="income" aria-pressed="' + (V.setKind === 'income') + '">들어온 돈 ' + cats('income').length + '</button></div>' +
+    '<section class="card s8"><div class="card-h"><span class="strong">분류</span><span class="small muted">눌러서 이름·아이콘·숨김·삭제</span></div><div class="seg"><button class="exp" data-skind="expense" aria-pressed="' + (V.setKind === 'expense') + '">' + T('out') + ' ' + cats('expense').length + '</button><button class="inc" data-skind="income" aria-pressed="' + (V.setKind === 'income') + '">' + T('in') + ' ' + cats('income').length + '</button></div>' +
       '<div>' + list.map(c => '<button class="row' + (c.hidden ? ' hiddenrow' : '') + '" data-cat="' + c.id + '"><span class="ic ' + (c.type === 'income' ? 'inc' : 'exp') + '">' + icon(catIcon(c)) + '</span><span class="mid"><div>' + esc(c.name) + (c.hidden ? ' <span class="tag">숨김</span>' : '') + '</div><div class="small muted">거래 ' + cnt(c.id) + '건</div></span>' + icon('right') + '</button>').join('') + '</div><button class="btn-dash" data-addcat>' + icon('plus') + '새 분류</button></section>' +
     '<section class="card s4"><span class="strong">계좌·카드</span><div>' + accts().map(a => '<button class="row" data-acct="' + a.id + '"><span class="ic">' + icon(acctIcon(a)) + '</span><span class="mid"><div>' + esc(a.name) + ((mainAcct() || {}).id === a.id ? ' <span class="tag">주 계좌</span>' : '') + '</div><div class="small muted">' + acctLabel(a.type) + ((a.detail || {}).org ? ' · ' + esc(a.detail.org) : '') + ((a.detail || {}).last4 ? ' (' + esc(a.detail.last4) + ')' : '') + (a.initial_balance ? ' · 시작 금액 ' + won(a.initial_balance) : '') + '</div></span>' + icon('right') + '</button>').join('') + '</div><button class="btn-dash" data-addacct>' + icon('plus') + '계좌·카드 추가</button></section>' +
     '<section class="card s8"><span class="strong">반복 거래</span><div>' + recs().map(r => '<button class="row' + (r.active === false ? ' hiddenrow' : '') + '" data-rec="' + r.id + '"><span class="ic ' + (r.type === 'income' ? 'inc' : 'exp') + '">' + icon('repeat') + '</span><span class="mid"><div>' + esc(r.name) + (r.active === false ? ' <span class="tag">멈춤</span>' : '') + '</div><div class="small muted">매달 ' + r.day + '일 · ' + ((catOf(r.category_id) || {}).name || '분류 없음') + (r.amount_type === 'variable' ? ' · 금액 바뀜' : '') + '</div></span><span class="strong ' + (r.type === 'income' ? 'up' : 'down') + '">' + won(r.amount) + '</span>' + icon('right') + '</button>').join('') + '</div><button class="btn-dash" data-addrec>' + icon('plus') + '반복 거래 추가</button></section>' +
@@ -549,7 +549,7 @@ function openTx(t, copy) {
           (imgBusy || imgItems ? '' : freq.length ? '<div class="small muted">자주 하는 거래</div><div class="chips">' + freq.map(x => '<button class="chip" data-freq="' + x.id + '">' + esc(x.description) + ' ' + won(x.amount) + '</button>').join('') + '</div>' : '') + (imgBusy || imgItems ? '' : '<div class="or small muted">또는 직접 입력</div>')) : '') +
       (ai || imgBusy || imgItems ? '' :
       '<div class="tx2"><div class="col">' +
-      '<div class="seg"><button class="exp" data-tkind="expense" aria-pressed="' + (d.type === 'expense') + '">나간 돈</button><button class="inc" data-tkind="income" aria-pressed="' + (d.type === 'income') + '">들어온 돈</button></div>' +
+      '<div class="seg"><button class="exp" data-tkind="expense" aria-pressed="' + (d.type === 'expense') + '">' + T('out') + '</button><button class="inc" data-tkind="income" aria-pressed="' + (d.type === 'income') + '">' + T('in') + '</button></div>' +
       '<label class="field"><span>금액</span><input id="fAmt" class="amount-in" inputmode="numeric" placeholder="0원" value="' + (d.amount ? Number(d.amount).toLocaleString('ko-KR') : '') + '"' + (!isNew || copy ? ' autofocus' : '') + '></label>' +
       '<div class="grid2"><label class="field"><span>날짜</span><input id="fDate" type="date" value="' + d.date + '"></label><label class="field"><span>시간 (비우면 지금)</span><input id="fTime" type="time" value="' + esc(d.time || '') + '"></label></div>' +
       '<div class="grid2"><label class="field"><span>내용</span><input id="fDesc" value="' + esc(d.description || '') + '" placeholder="예: 점심"></label><label class="field"><span>거래처</span><input id="fVendor" value="' + esc(d.vendor || '') + '" placeholder="예: 김밥천국"></label></div>' +
@@ -638,7 +638,7 @@ function openCat(id, type, after) {
   const curName = () => { const el = document.getElementById('cName'); return el ? el.value : c.name; };
   const curIc = () => ic || iconForName(curName(), '');
   const n = id ? bookTx().filter(t => t.category_id === id).length : 0;
-  const draw = () => sheet(id ? '분류 고치기' : '새 분류 (' + (c.type === 'income' ? '들어온 돈' : '나간 돈') + ')',
+  const draw = () => sheet(id ? '분류 고치기' : '새 분류 (' + (c.type === 'income' ? T('in') : T('out')) + ')',
     '<label class="field"><span>이름</span><input id="cName" value="' + esc(c.name) + '" maxlength="14" placeholder="예: 반려동물" autofocus></label>' +
     '<div class="field"><span>추천 아이콘' + (ic ? '' : ' (이름에 맞게 자동)') + '</span><div class="ipick isug" id="cSug">' + sugRow(curName(), curIc()) + '</div></div>' +
     '<div class="field"><span>전체 아이콘</span>' + allIcons(curIc()) + '</div>' +
@@ -718,7 +718,7 @@ function openAcct(id, after) {
 function openRec(id, from) {
   const r = id ? Object.assign({}, S.recs.find(x => x.id === id)) : Object.assign({ id: uid(), book_id: book().id, name: '', type: 'expense', amount: 0, amount_type: 'fixed', freq: 'monthly', day: Number(todayStr().slice(8)), active: true, category_id: null, account_id: (accts()[0] || {}).id || null, log: [] }, from || {});
   const draw = () => sheet(id ? '반복 거래' : '반복 거래 추가',
-    '<div class="seg"><button class="exp" data-rkind="expense" aria-pressed="' + (r.type === 'expense') + '">나간 돈</button><button class="inc" data-rkind="income" aria-pressed="' + (r.type === 'income') + '">들어온 돈</button></div>' +
+    '<div class="seg"><button class="exp" data-rkind="expense" aria-pressed="' + (r.type === 'expense') + '">' + T('out') + '</button><button class="inc" data-rkind="income" aria-pressed="' + (r.type === 'income') + '">' + T('in') + '</button></div>' +
     '<label class="field"><span>이름</span><input id="rName" value="' + esc(r.name) + '" placeholder="예: 넷플릭스" autofocus></label>' +
     '<div class="grid2"><label class="field"><span>금액</span><input id="rAmt" inputmode="numeric" value="' + (r.amount ? Number(r.amount).toLocaleString('ko-KR') : '') + '"></label><label class="field"><span>매달 며칠</span><input id="rDay" type="number" min="1" max="31" value="' + (r.day || 1) + '"></label></div>' +
     '<div class="field"><span>분류</span><div class="chips">' + cats(r.type).filter(c => !c.hidden).map(c => '<button class="chip" data-rcat="' + c.id + '" aria-pressed="' + (r.category_id === c.id) + '">' + icon(catIcon(c)) + esc(c.name) + '</button>').join('') + '</div></div>' +
@@ -927,7 +927,7 @@ app.addEventListener('click', async e => {
   if (el('[data-logout]')) { if (S.demo) { location.href = location.pathname; return; } await signOut(); location.reload(); }
 });
 const CH = { s: null, avg: null, act: -1 };
-const chartStats = (pre, i, x) => '<div><span class="small muted">' + pre + '들어온 돈</span><span class="v">' + won(i) + '</span></div><div><span class="small muted">' + pre + '나간 돈</span><span class="v">' + won(x) + '</span></div><div><span class="small muted">' + pre + '남은 돈</span><span class="v">' + signed(i - x) + '</span></div>';
+const chartStats = (pre, i, x) => '<div><span class="small muted">' + pre + T('in') + '</span><span class="v">' + won(i) + '</span></div><div><span class="small muted">' + pre + T('out') + '</span><span class="v">' + won(x) + '</span></div><div><span class="small muted">' + pre + T('left') + '</span><span class="v">' + signed(i - x) + '</span></div>';
 function chartFocus(i) {
   const box = document.querySelector('.chart .cbox'), st = document.querySelector('.chart .cstats');
   if (!box || !CH.s) return;

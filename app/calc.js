@@ -1,3 +1,4 @@
+import { termsFor } from './terms.js';
 // Derived numbers: monthly totals, 6-month series, recurring status, computed alerts, net worth.
 import { S } from './store.js';
 import { todayStr, addMonths, addDays, ym, won } from './util.js';
@@ -48,8 +49,8 @@ export function score(m) {
   const st = (x, max) => x >= max * 0.75 ? ['좋아요', 'good'] : x >= max * 0.4 ? ['보통', 'mid'] : ['주의', 'bad'];
   const pct = x => Math.round(x * 100) + '%';
   const f = [
-    { k: '저축률', v: s.inc ? pct(rate) : '수입 없음', note: '들어온 돈 중 남은 비율', p: p1, max: 40, st: st(p1, 40) },
-    { k: '고정 지출', v: fr == null ? '—' : pct(fr), note: '반복 지출 ÷ 들어온 돈', p: p2, max: 25, st: st(p2, 25) },
+    { k: '저축률', v: s.inc ? pct(rate) : '수입 없음', note: T('in') + ' 중 남은 비율', p: p1, max: 40, st: st(p1, 40) },
+    { k: '고정 지출', v: fr == null ? '—' : pct(fr), note: '반복 지출 ÷ ' + T('in'), p: p2, max: 25, st: st(p2, 25) },
     { k: '지출 속도', v: pace == null ? '—' : pct(pace), note: '지난 3달 같은 시점 대비', p: p3, max: 20, st: st(p3, 20) },
     { k: '기록 습관', v: days + '/' + elapsed + '일', note: '기록한 날', p: p4, max: 15, st: st(p4, 15) }
   ];
@@ -157,3 +158,6 @@ export function assetValueAt(a, m) {
   return s ? (a.type === 'loan' ? -1 : 1) * Number(s.value) : 0;
 }
 export const netWorthAt = m => assets().reduce((x, a) => x + assetValueAt(a, m), 0);
+
+// Label for the current book type (see terms.js).
+export const T = k => termsFor((book() || {}).kind)[k];
