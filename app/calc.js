@@ -73,7 +73,10 @@ export function dueDate(r, m) {
   return m + '-' + String(Math.min(r.day || 1, last)).padStart(2, '0');
 }
 export function recDone(r, m) {
-  if (bookTx().some(t => t.recurring_id === r.id && t.date.startsWith(m))) return true;
+  // A payment counts for the month it was due (its log entry), not the day it went out:
+  // October's bill paid on Nov 2 closes October, and November's bill is still to come.
+  const cyc = {}; (r.log || []).forEach(l => { if (l.txId) cyc[l.txId] = l.date || ''; });
+  if (bookTx().some(t => t.recurring_id === r.id && (cyc[t.id] || t.date).startsWith(m))) return true;
   return (r.log || []).some(l => (l.date || '').startsWith(m) && l.status === 'done');
 }
 export function recThisMonth() {

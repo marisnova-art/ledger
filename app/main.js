@@ -504,7 +504,7 @@ function showImage(src, name) {
 function openTx(t, copy) {
   const isNew = !t || copy;
   const d = t ? Object.assign({}, t) : { type: 'expense', amount: '', date: todayStr(), time: '', description: '', vendor: '', memo: '', category_id: null, account_id: (mainAcct() || {}).id || null };
-  if (copy) { d.id = null; d.date = todayStr(); d.time = ''; d.recurring_id = null; }
+  if (copy === true) { d.id = null; d.date = todayStr(); d.time = ''; d.recurring_id = null; } // copy=true: duplicate a row; copy='rec': record a recurring payment
   if (!d.category_id) { const c = cats(d.type).filter(x => !x.hidden)[0]; d.category_id = c ? c.id : null; }
   let ai = '', aiRes = null, aiWait = '', aiTimer = 0, imgItems = null, imgBusy = false, imgErr = '', imgFile = null, rcBlob = null, rcLocal = '', rcRemove = false;
   const isDup = it => bookTx().some(x => x.date === it.date && x.type === it.type && Number(x.amount) === Number(it.amount));
@@ -627,6 +627,8 @@ function openTx(t, copy) {
         if (rcRemove) row.receipt_path = null;
         if (rcBlob) { try { row.receipt_path = await uploadReceipt(rcBlob); } catch (er) { toast('영수증 사진은 저장하지 못했어요'); } }
         closeSheet(); render();
+        const rr = !old && d.cycle && row.recurring_id && S.recs.find(x => x.id === row.recurring_id);
+        if (rr) { const rec = Object.assign({}, rr, { log: (rr.log || []).concat([{ date: d.cycle, txId: row.id, amount: Number(row.amount), status: 'done' }]) }); try { await put('v2_recurring', rec); } catch (er) { /* the transaction still saves; the cycle falls back to its date */ } }
         try { await put('v2_transactions', row); render(); toast(old ? '고쳤어요' : won(row.amount) + ' 저장했어요', async () => { if (old) await put('v2_transactions', old); else await remove('v2_transactions', row.id); }); } catch (er) { fail(er); }
       }
     }
@@ -750,9 +752,10 @@ function openRec(id, from) {
   });
   draw();
 }
-function recordRec(id) {
+function recordRec(id, due) {
   const r = S.recs.find(x => x.id === id), m = ym(todayStr());
-  openTx({ id: null, type: r.type, amount: r.amount, date: dueDate(r, m) > todayStr() ? todayStr() : dueDate(r, m), time: '', description: r.name, vendor: '', memo: '', category_id: r.category_id, account_id: r.account_id, recurring_id: r.id }, true);
+  due = due || dueDate(r, m);
+  openTx({ id: null, type: r.type, amount: r.amount, date: due > todayStr() ? todayStr() : due, time: '', description: r.name, vendor: '', memo: '', category_id: r.category_id, account_id: r.account_id, recurring_id: r.id, cycle: due }, 'rec');
   const tx = document.querySelector('.sheet h3'); if (tx) tx.textContent = r.name + ' 기록하기';
 }
 
@@ -900,7 +903,7 @@ app.addEventListener('click', async e => {
   if ((x = el('[data-adone]'))) { const id = x.dataset.adone; dismiss(id); render(); toast('알림을 지웠어요', () => dismiss(id, false)); return; }
   if ((x = el('[data-aact]'))) {
     const a = computeAlerts().find(y => y.id === x.dataset.aact); if (!a) return; markSeen([a.id]);
-    if (a.act === 'record') recordRec(a.ref);
+    if (a.act === 'record') recordRec(a.ref, /^\d{4}-\d\d-\d\d$/.test(a.id.split(':').pop()) ? a.id.split(':').pop() : null);
     else if (a.act === 'cat') { V.view = 'list'; V.lm = ym(todayStr()); V.q = ''; V.kind = 'all'; V.catF = a.ref; render(); window.scrollTo(0, 0); }
     else if (a.act === 'search') { V.view = 'list'; V.q = a.ref; render(); window.scrollTo(0, 0); }
     else if (a.act === 'mkrec') { const tx = S.txs.find(y => y.id === a.ref); openRec(null, { name: tx.description, type: tx.type, amount: Number(tx.amount), day: Number(tx.date.slice(8)), category_id: tx.category_id, account_id: tx.account_id }); }
