@@ -394,13 +394,3 @@ button.tx.r-out:hover { background: color-mix(in srgb, var(--coral) 10%, transpa
 .chart .cstats > div { align-items: center; text-align: center; }
 .chart .cstats > div + div { border-left: 1px solid var(--line); }
 @media (max-width: 959px) { .chart .cstats > div + div { border-left: 0; } .chart .cstats.three > div:nth-child(3), .chart .cstats > div:nth-child(3) { justify-content: center; gap: 10px; } }
-/* Mobile hero: collapsed = amount + in/out; expanded = everything incl. tiles */
-.htog { display: none; }
-@media (max-width: 959px) {
-  .hero.s12 .hr { margin-top: 20px; }
-  .hero.s12 .htiles { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .hero.s12 .htile { min-height: 0; padding: 16px 18px; }
-  .htog { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 44px; margin-top: 16px; border-radius: 12px; background: color-mix(in srgb, var(--on-accent) 9%, transparent); color: var(--on-accent); font-size: var(--t3); }
-  .htog svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-}
-.hero.s12 .num + .stats { margin-top: 20px; }
