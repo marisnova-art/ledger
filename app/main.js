@@ -480,9 +480,20 @@ const pick = (attr, sel) => layer.querySelectorAll('[data-' + attr + ']').forEac
 
 /* transaction add / edit */
 // Full-screen image viewer (tap anywhere to close).
-function showImage(src) {
-  const el = document.createElement('div'); el.className = 'lightbox'; el.innerHTML = '<img alt="영수증" src="' + esc(src) + '">';
-  el.addEventListener('click', () => el.remove()); document.body.appendChild(el);
+function showImage(src, name) {
+  const el = document.createElement('div'); el.className = 'lightbox';
+  el.innerHTML = '<img alt="영수증" src="' + esc(src) + '"><div class="lb-acts"><button class="btn-line" data-lbsave>' + icon('download') + '저장</button><button class="btn-line" data-lbclose>' + icon('x') + '닫기</button></div>';
+  el.addEventListener('click', async e => {
+    if (!e.target.closest('[data-lbsave]')) { el.remove(); return; }
+    try {
+      const blob = await (await fetch(src)).blob();
+      const fname = (name || '영수증').replace(/[\\/:*?"<>|]/g, '') + '.jpg';
+      const file = new File([blob], fname, { type: blob.type || 'image/jpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [file] }) && /iP(hone|ad)|Android/.test(navigator.userAgent)) { await navigator.share({ files: [file] }); return; }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    } catch (err) { if (!err || err.name !== 'AbortError') toast('영수증을 저장하지 못했어요. 잠시 후 다시 해 주세요.'); }
+  });
+  document.body.appendChild(el);
 }
 function openTx(t, copy) {
   const isNew = !t || copy;
@@ -586,7 +597,7 @@ function openTx(t, copy) {
       const a = t2.closest('[data-tacct]'); if (a) { d.account_id = a.dataset.tacct; pick('tacct', a); return; }
       const fq = t2.closest('[data-freq]'); if (fq) { const x = S.txs.find(y => y.id === fq.dataset.freq); Object.assign(d, { type: x.type, amount: x.amount, description: x.description, vendor: x.vendor, category_id: x.category_id, account_id: x.account_id, date: todayStr(), time: '' }); ai = ''; draw(); const f = document.getElementById('fDate'); if (f) f.focus(); return; }
       if (t2.closest('[data-aisave]')) { saveAI(); return; }
-      if (t2.closest('[data-rcview]')) { const im = document.getElementById('rcImg'); if (im && im.src) showImage(im.src); return; }
+      if (t2.closest('[data-rcview]')) { const im = document.getElementById('rcImg'); if (im && im.src) showImage(im.src, '영수증_' + (d.date || '') + (d.vendor || d.description ? '_' + (d.vendor || d.description) : '')); return; }
       if (t2.closest('[data-rcdel]')) { readForm(); rcRemove = true; rcBlob = null; if (rcLocal) URL.revokeObjectURL(rcLocal); rcLocal = ''; draw(); return; }
       const ir = t2.closest('[data-imgi]'); if (ir) { const it = imgItems[+ir.dataset.imgi]; it.on = !it.on; draw(); return; }
       if (t2.closest('[data-imgclear]')) { imgItems = null; imgErr = ''; draw(); return; }

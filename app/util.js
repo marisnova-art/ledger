@@ -32,6 +32,7 @@ export const P = {
   bell: 'M6 16V11a6 6 0 0 1 12 0v5l2 2H4l2-2zM10 21h4',
   gear: 'M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M9 10v4M17 16v4',
   check: 'M5 12l5 5L20 7',
+  download: 'M12 4v11M7 10l5 5 5-5M5 20h14',
   search: 'M11 18a7 7 0 1 0 0-14a7 7 0 0 0 0 14zM20 20l-4-4',
   x: 'M6 6l12 12M18 6L6 18',
   chev: 'M6 9l6 6 6-6',
