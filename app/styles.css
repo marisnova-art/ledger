@@ -444,10 +444,10 @@ button.htile:active { transform: scale(.99); }
 .hhead { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .hic { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; flex: none; background: var(--on-accent); color: var(--accent); }
 .hic svg.i { width: 16px; height: 16px; }
-.hhead .hk { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit; }
+.hhead .hk { flex: 1; min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; word-break: keep-all; color: inherit; }
 .hbadge { flex: none; padding: 2px 8px; border-radius: 99px; background: color-mix(in srgb, var(--on-accent) 10%, transparent); white-space: nowrap; }
 .htile .hv { margin-top: 4px; }
-.hnote { color: color-mix(in srgb, currentColor 70%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hnote { color: color-mix(in srgb, currentColor 70%, transparent); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; word-break: keep-all; }
 .htile .hviz { height: 52px; margin-top: auto; }
 .hleg i.dash { background: none; border-top: 2px dashed currentColor; height: 0; width: 12px; border-radius: 0; opacity: .5; }
 .hleg i:not([style]):not(.dash) { width: 12px; height: 3px; border-radius: 2px; }
