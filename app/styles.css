@@ -41,8 +41,8 @@ svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-widt
 [hidden] { display: none !important; }
 
 /* ---------- Shell ---------- */
-.shell { display: grid; grid-template-columns: 268px minmax(0, 1144px); justify-content: center; min-height: 100vh; padding: 0 24px; }
-.side { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 22px; padding: 24px 16px; border-right: 1px solid var(--line); border-left: 1px solid var(--line); overflow-y: auto; }
+.shell { display: grid; grid-template-columns: 312px minmax(0, 1160px); justify-content: center; min-height: 100vh; padding: 0 24px; }
+.side { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 22px; padding: 24px 40px; border-right: 1px solid var(--line); border-left: 1px solid var(--line); overflow-y: auto; }
 .brand { display: flex; align-items: center; gap: 12px; padding: 4px 10px; }
 .brand .mark { width: 44px; height: 44px; border-radius: 14px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; flex: none; box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 30%, transparent); }
 .brand .mark svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
@@ -63,7 +63,7 @@ svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-widt
 .nav button[aria-current="page"] svg.i { color: var(--in); }
 .side .foot { margin-top: auto; padding: 0 8px; }
 
-.main { min-width: 0; padding: 0 32px 64px; border-right: 1px solid var(--line); }
+.main { min-width: 0; padding: 0 40px 64px; border-right: 1px solid var(--line); }
 .topbar, .view { max-width: 1080px; }
 .topbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px; padding: 20px 0 16px; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 .topbar .title { font-weight: 700; margin-right: auto; display: flex; align-items: center; gap: 10px; min-width: 0; }
