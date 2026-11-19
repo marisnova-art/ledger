@@ -12,7 +12,7 @@ try { theme = localStorage.getItem('ledger.v2.theme') || 'dark'; cur.bookId = lo
 const applyTheme = () => {
   document.documentElement.dataset.theme = theme;
   const light = theme === 'light' || (theme === 'system' && matchMedia('(prefers-color-scheme: light)').matches);
-  document.querySelector('meta[name=theme-color]').setAttribute('content', light ? '#F3F0E6' : '#0C0D0B');
+  document.querySelector('meta[name=theme-color]').setAttribute('content', light ? '#EEEADD' : '#0C0D0B');
 };
 applyTheme();
 matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
