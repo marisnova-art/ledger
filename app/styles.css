@@ -439,7 +439,8 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adj
 .backdrop { touch-action: none; }
 /* Hero tiles v2: header with icon + badge, value, note, chart */
 .htile { position: relative; align-items: stretch; text-align: left; gap: 8px; padding: 18px 20px; border-radius: 18px; color: inherit; background: color-mix(in srgb, var(--on-accent) 7%, transparent); border: 1px solid color-mix(in srgb, var(--on-accent) 10%, transparent); transition: background .15s, transform .15s; }
-button.htile:hover { background: color-mix(in srgb, var(--on-accent) 11%, transparent); }
+@media (hover: hover) { .hero button.htile:hover { background: color-mix(in srgb, var(--on-accent) 11%, transparent); } }
+button, a, label { -webkit-tap-highlight-color: transparent; }
 button.htile:active { transform: scale(.99); }
 .hhead { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .hic { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; flex: none; background: var(--on-accent); color: var(--accent); }
