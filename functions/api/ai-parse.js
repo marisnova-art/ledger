@@ -10,14 +10,15 @@ const SUPABASE_URL = 'https://wpakjtlyfxwnrsuxkyjv.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_kw1ZI6jTAnvQqKGUUYIZVA_v7jRZjfl'; // public key; RLS protects data
 const DAILY_LIMIT = 50;
 // Tried in order; a busy (503), missing (404) or rate-limited (429) model moves on to the next one.
-const GEMINI_MODELS = ['gemini-3.5-flash', 'gemini-3-flash', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+const GEMINI_MODELS = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash-lite'];
 
 async function gemini(env, system, text, img) {
   const list = env.GEMINI_MODEL ? [env.GEMINI_MODEL, ...GEMINI_MODELS.filter(m => m !== env.GEMINI_MODEL)] : GEMINI_MODELS;
   const errs = [];
   for (const m of list) {
+    // A busy model (503) gets one more try after a short pause before moving on.
     try { return await geminiOne(env, m, system, text, img); }
-    catch (e) { errs.push(String(e && e.message || e)); if (!/http (503|404|429|500|400)|empty|JSON/.test(String(e && e.message))) break; }
+    catch (e0) { if (/http 503/.test(String(e0 && e0.message))) { await new Promise(r => setTimeout(r, 1200)); try { return await geminiOne(env, m, system, text, img); } catch (e1) { errs.push(String(e1 && e1.message || e1)); continue; } } var e = e0; errs.push(String(e && e.message || e)); if (!/http (503|404|429|500|400)|empty|JSON/.test(String(e && e.message))) break; }
   }
   throw new Error(errs.join(' / '));
 }
@@ -105,7 +106,7 @@ export async function onRequestPost({ request, env }) {
   const prompt = text || '이 이미지의 거래를 정리해 주세요.';
   let out = null, used = '', why = '';
   if (env.GEMINI_API_KEY) {
-    try { const g = await gemini(env, system, prompt, img); out = g.out; used = g.model; if (!out || !Array.isArray(out.items) || !out.items.length) { why = 'Gemini 결과 0건 · ' + g.model; out = null; } } catch (e) { out = null; why = String(e && e.message || e).slice(0, 120); } // quota (429) or error → Llama
+    try { const g = await gemini(env, system, prompt, img); out = g.out; used = g.model; if (!out || !Array.isArray(out.items) || !out.items.length) { why = 'Gemini 결과 0건 · ' + g.model; out = null; } } catch (e) { out = null; why = String(e && e.message || e).slice(0, 400); } // quota (429) or error → Llama
   } else why = 'no_key';
   if (!out && env.AI) {
     const userContent = img
