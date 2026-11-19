@@ -58,7 +58,8 @@ export function aiParse(text, { sb, cats, accts, now, image }) {
     }) }).then(async r => { clearTimeout(to); if (r.ok) return r.json(); let j = {}; try { j = await r.json(); } catch (e) {} aiInfo.err = 'http ' + r.status + (j.error ? ' ' + j.error : '') + (j.detail ? ' ' + j.detail : ''); return null; })
       .catch(e => { clearTimeout(to); aiInfo.err = e && e.name === 'AbortError' ? '45초 안에 응답이 없어요' : '연결 실패'; return null; });
   }).then(data => {
-    if (!data || !Array.isArray(data.items)) return null;
+    if (!data) { if (!aiInfo.err) aiInfo.err = '로그인 정보 없음'; return null; }
+    if (!Array.isArray(data.items)) { aiInfo.err = '응답 형식 오류'; return null; }
     aiInfo.model = String(data.model || ''); aiInfo.why = String(data.gemini || '');
     const items = data.items.map(it => ({
       date: /^\d{4}-\d{2}-\d{2}$/.test(it.date) && it.date <= t ? it.date : t,
@@ -70,7 +71,7 @@ export function aiParse(text, { sb, cats, accts, now, image }) {
       category_id: catIds.has(it.category_id) ? it.category_id : null,
       account_id: acctIds.has(it.account_id) ? it.account_id : null
     })).filter(it => it.amount > 0);
-    if (!items.length) aiInfo.err = '읽은 결과에 금액이 있는 거래가 없어요';
+    if (!items.length) aiInfo.err = 'AI가 금액 있는 거래를 못 찾음 · ' + (aiInfo.model || '?');
     return items.length ? items : null;
   }).catch(() => null);
   if (image) return p;

@@ -17,7 +17,7 @@ async function gemini(env, system, text, img) {
   const errs = [];
   for (const m of list) {
     try { return await geminiOne(env, m, system, text, img); }
-    catch (e) { errs.push(String(e && e.message || e)); if (!/http (503|404|429|500|400)/.test(String(e && e.message))) break; }
+    catch (e) { errs.push(String(e && e.message || e)); if (!/http (503|404|429|500|400)|empty|JSON/.test(String(e && e.message))) break; }
   }
   throw new Error(errs.join(' / '));
 }
@@ -31,14 +31,14 @@ async function geminiOne(env, model, system, text, img) {
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts }],
-      generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 2000 }
+      generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 8192 }
     })
   });
   if (!r.ok) { let m = ''; try { m = ((await r.json()).error || {}).status || ''; } catch {} throw new Error('http ' + r.status + (m ? ' ' + m : '') + ' · ' + model); }
   const d = await r.json();
   const t = ((d.candidates || [])[0] || {}).content;
   const txt = t && Array.isArray(t.parts) ? t.parts.map(p => p.text || '').join('') : '';
-  const m = txt.match(/\{[\s\S]*\}/); if (!m) throw new Error('gemini empty');
+  const m = txt.match(/\{[\s\S]*\}/); if (!m) throw new Error('empty ' + (((d.candidates || [])[0] || {}).finishReason || (d.promptFeedback || {}).blockReason || '') + ' · ' + model);
   return { out: JSON.parse(m[0]), model };
 }
 
@@ -105,7 +105,7 @@ export async function onRequestPost({ request, env }) {
   const prompt = text || '이 이미지의 거래를 정리해 주세요.';
   let out = null, used = '', why = '';
   if (env.GEMINI_API_KEY) {
-    try { const g = await gemini(env, system, prompt, img); out = g.out; used = g.model; } catch (e) { out = null; why = String(e && e.message || e).slice(0, 120); } // quota (429) or error → Llama
+    try { const g = await gemini(env, system, prompt, img); out = g.out; used = g.model; if (!out || !Array.isArray(out.items) || !out.items.length) { why = 'Gemini 결과 0건 · ' + g.model; out = null; } } catch (e) { out = null; why = String(e && e.message || e).slice(0, 120); } // quota (429) or error → Llama
   } else why = 'no_key';
   if (!out && env.AI) {
     const userContent = img
