@@ -340,7 +340,7 @@ function settingsView() {
     '<section class="card s4"><span class="strong">계좌·카드</span><div>' + accts().map(a => '<button class="row" data-acct="' + a.id + '"><span class="ic">' + icon(acctIcon(a)) + '</span><span class="mid"><div>' + esc(a.name) + '</div><div class="small muted">' + acctLabel(a.type) + ((a.detail || {}).org ? ' · ' + esc(a.detail.org) : '') + ((a.detail || {}).last4 ? ' (' + esc(a.detail.last4) + ')' : '') + (a.initial_balance ? ' · 시작 금액 ' + won(a.initial_balance) : '') + '</div></span>' + icon('right') + '</button>').join('') + '</div><button class="btn-dash" data-addacct>' + icon('plus') + '계좌·카드 추가</button></section>' +
     '<section class="card s8"><span class="strong">반복 거래</span><div>' + recs().map(r => '<button class="row' + (r.active === false ? ' hiddenrow' : '') + '" data-rec="' + r.id + '"><span class="ic ' + (r.type === 'income' ? 'inc' : 'exp') + '">' + icon('repeat') + '</span><span class="mid"><div>' + esc(r.name) + (r.active === false ? ' <span class="tag">멈춤</span>' : '') + '</div><div class="small muted">매달 ' + r.day + '일 · ' + ((catOf(r.category_id) || {}).name || '분류 없음') + (r.amount_type === 'variable' ? ' · 금액 바뀜' : '') + '</div></span><span class="strong ' + (r.type === 'income' ? 'up' : 'down') + '">' + won(r.amount) + '</span>' + icon('right') + '</button>').join('') + '</div><button class="btn-dash" data-addrec>' + icon('plus') + '반복 거래 추가</button></section>' +
     trashCard() +
-    '<section class="card s4"><span class="strong">계정</span><div class="kv small"><span class="muted">로그인</span><span>' + esc(S.demo ? '체험 모드' : S.user.email) + '</span></div><button class="btn-ghost" data-logout>' + icon('logout') + (S.demo ? '체험 끝내기' : '로그아웃') + '</button></section>';
+    '<section class="card s4"><span class="strong">계정</span><div class="kv small"><span class="muted">로그인</span><span>' + esc(S.demo ? '체험 모드' : S.user.email) + '</span></div><div class="kv small"><span class="muted">버전</span><span>' + esc(verText) + '</span></div><button class="btn-ghost" data-logout>' + icon('logout') + (S.demo ? '체험 끝내기' : '로그아웃') + '</button></section>';
 }
 
 const TLABEL = { v2_categories: '분류', v2_accounts: '계좌·카드', v2_recurring: '반복 거래', v2_assets: '자산' };
@@ -933,9 +933,15 @@ async function start() {
   if (p.get('view') === 'transactions') V.view = 'list';
   render();
 }
+// Intro screen: brand + running version (from config.js, so it shows exactly which update is loaded).
+const verText = 'v' + CONFIG.VERSION + ' · ' + CONFIG.BUILT;
+const T0 = Date.now();
+(() => { const n = document.getElementById('spName'), v = document.getElementById('spVer'); if (n) n.textContent = CONFIG.BRAND; if (v) v.textContent = verText; })();
+const hideSplash = () => { const sp = document.getElementById('splash'); if (!sp) return; setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 400); }, Math.max(0, 900 - (Date.now() - T0))); };
 (async () => {
-  if (new URLSearchParams(location.search).has('demo')) { loadDemo(); render(); return; }
+  if (new URLSearchParams(location.search).has('demo')) { loadDemo(); render(); hideSplash(); return; }
   try { const u = await initClient(); if (u) await start(); else loginView(); }
   catch (e) { console.error(e); loginView('서버에 연결하지 못했어요. 잠시 뒤 다시 열어 주세요.'); }
+  hideSplash();
 })();
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
