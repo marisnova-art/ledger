@@ -429,13 +429,23 @@ function render() {
       '<button class="btn-ghost tall" data-advopen>상세 검색</button><button class="btn-add" data-add>' + icon('plus') + '거래 추가</button></div>' +
       '<div class="mhead"><button class="bookbtn" data-bookmenu><span class="bdot">' + bookIconHtml(b) + '</span><span>' + esc(b.name) + '</span>' + icon('chev') + '</button><button class="icon-btn" data-msearch aria-label="검색">' + icon('search') + '</button></div>' +
       '<main class="view" id="view">' + body + '</main></div>' +
-    '<nav class="tabbar" aria-label="메뉴"><div class="inner">' + [['home', 'home', '홈'], ['list', 'list', '내역']].map(n => '<button class="tab" data-go="' + n[0] + '"' + (V.view === n[0] || (n[0] === 'home' && V.view === 'assets') ? ' aria-current="page"' : '') + '>' + icon(n[1]) + n[2] + '</button>').join('') +
+    '<nav class="tabbar" aria-label="메뉴"><div class="inner" style="--ti:' + TAB.last + '"><span class="tind" aria-hidden="true"></span>' + [['home', 'home', '홈'], ['list', 'list', '내역']].map(n => '<button class="tab" data-go="' + n[0] + '"' + (V.view === n[0] || (n[0] === 'home' && V.view === 'assets') ? ' aria-current="page"' : '') + '>' + icon(n[1]) + n[2] + '</button>').join('') +
       '<button class="tab add" data-add aria-label="거래 추가">' + icon('plus') + '</button>' + [['alerts', 'bell', '알림'], ['settings', 'gear', '설정']].map(n => '<button class="tab" data-go="' + n[0] + '"' + (V.view === n[0] ? ' aria-current="page"' : '') + '>' + icon(n[1]) + n[2] + (n[0] === 'alerts' && nAlerts ? '<span class="newdot" style="position:absolute;margin:-30px 0 0 22px"></span>' : '') + '</button>').join('') + '</div></nav></div>' +
     '<button class="totop" data-totop aria-label="맨 위로">' + icon('up') + '</button>';
   if (focus && (focus === 'q' || focus === 'qtop')) { const el = document.getElementById(focus) || document.getElementById(focus === 'q' ? 'qtop' : 'q'); if (el) { el.focus(); try { el.setSelectionRange(sel, sel); } catch (e) {} } }
   try { localStorage.setItem('ledger.v2.book', b.id); } catch (e) {}
   onScroll();
   fitCharts();
+  moveTab();
+}
+// Bottom tab highlight slides from the last tab to the new one.
+const TAB = { last: 0, map: { home: 0, assets: 0, list: 1, alerts: 3, settings: 4 } };
+function moveTab() {
+  const inner = document.querySelector('.tabbar .inner'), to = TAB.map[V.view] == null ? 0 : TAB.map[V.view];
+  if (!inner) return;
+  if (to === TAB.last) { inner.style.setProperty('--ti', to); return; }
+  requestAnimationFrame(() => requestAnimationFrame(() => { inner.style.setProperty('--ti', to); }));
+  TAB.last = to;
 }
 const go = v => { V.view = v; V.bpick = false; render(); window.scrollTo(0, 0); };
 const onScroll = () => { const t = document.querySelector('.totop'); if (t) t.classList.toggle('show', window.scrollY > 400); };
