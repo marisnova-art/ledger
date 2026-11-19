@@ -1,11 +1,12 @@
 // POST /api/ai-parse  — Cloudflare Pages Function.
 // Tries Google Gemini first (free tier, key in the GEMINI_API_KEY secret); when it is missing, out of
-// quota or failing, falls back to Cloudflare Workers AI (binding "AI", Llama).
+// quota or failing, falls back to Cloudflare Workers AI (binding "AI": Gemma 3, then Llama).
 // Turns a one-line note ("어제 저녁 쿠팡이츠 덮밥 23000") or a receipt / bank-app screenshot into
 // transactions. Signed-in users only; each call is counted against a daily limit in Supabase
 // (public.v2_ai_bump). The app falls back to its local rules whenever this returns an error.
 
-const MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct'; // text + image, JSON mode, multilingual
+// Cloudflare fallbacks, tried in order: Gemma 3 (Google, better at Korean receipts) then Llama.
+const CF_MODELS = ['@cf/google/gemma-3-12b-it', '@cf/meta/llama-4-scout-17b-16e-instruct'];
 const SUPABASE_URL = 'https://wpakjtlyfxwnrsuxkyjv.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_kw1ZI6jTAnvQqKGUUYIZVA_v7jRZjfl'; // public key; RLS protects data
 const DAILY_LIMIT = 50;
@@ -112,19 +113,21 @@ export async function onRequestPost({ request, env }) {
     const userContent = img
       ? [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + img } }]
       : prompt;
-    try {
-      const res = await env.AI.run(MODEL, {
-        messages: [{ role: 'system', content: system }, { role: 'user', content: userContent }],
-        response_format: { type: 'json_schema', json_schema: schema },
-        max_tokens: 2000,
-        temperature: 0.1
-      });
-      out = res && res.response;
-      if (typeof out === 'string') { const m = out.match(/\{[\s\S]*\}/); try { out = m ? JSON.parse(m[0]) : null; } catch { out = null; } }
-      used = MODEL;
-    } catch (e) {
-      return json(502, { error: 'ai', detail: String(e && e.message || e).slice(0, 200) });
+    const cfList = env.CF_MODEL ? [env.CF_MODEL, ...CF_MODELS.filter(m => m !== env.CF_MODEL)] : CF_MODELS;
+    let lastErr = '';
+    for (const m of cfList) {
+      try {
+        const opts = { messages: [{ role: 'system', content: system }, { role: 'user', content: userContent }], max_tokens: 2000, temperature: 0.1 };
+        if (/llama/.test(m)) opts.response_format = { type: 'json_schema', json_schema: schema };
+        const res = await env.AI.run(m, opts);
+        let o = res && res.response;
+        if (typeof o === 'string') { const mm = o.match(/\{[\s\S]*\}/); try { o = mm ? JSON.parse(mm[0]) : null; } catch { o = null; } }
+        if (o && Array.isArray(o.items) && o.items.length) { out = o; used = m; break; }
+        lastErr = m + ': 0건';
+      } catch (e) { lastErr = m + ': ' + String(e && e.message || e).slice(0, 200); }
     }
+    if (!out && lastErr && !used) used = cfList[cfList.length - 1];
+    if (!out && /: (?!0건)/.test(lastErr)) return json(502, { error: 'ai', detail: lastErr });
   }
   const items = out && Array.isArray(out.items) ? out.items : [];
   return json(200, { items, model: used, gemini: why });
