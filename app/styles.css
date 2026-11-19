@@ -74,7 +74,7 @@ svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-widt
 .search .x { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 99px; background: var(--soft); }
 .search .x svg.i { width: 14px; height: 14px; }
 .btn-add { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 16px; border-radius: 12px; background: var(--accent); color: var(--on-accent); font-weight: 400; white-space: nowrap; }
-.icon-btn { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--card); flex: none; }
+.icon-btn { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--card); flex: none; }
 .mhead, .tabbar { display: none; }
 
 /* ---------- Bento ---------- */
@@ -104,11 +104,11 @@ svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-widt
 .stats > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .stats .v { font-weight: 400; overflow-wrap: anywhere; }
 .lbl { display: inline-flex; align-items: center; gap: 6px; }
-.lbl svg { width: 18px; height: 18px; border-radius: 99px; flex: none; fill: none; stroke-width: 2; stroke-linecap: round; }
+.lbl svg { width: 18px; height: 18px; border-radius: 6px; flex: none; fill: none; stroke-width: 2; stroke-linecap: round; }
 .lbl.in svg { background: var(--on-accent); stroke: var(--accent); }
 .lbl.out svg { background: var(--coral); stroke: #fff; }
 .mstep { display: inline-flex; align-items: center; gap: 6px; }
-.mstep button { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 99px; background: color-mix(in srgb, currentColor 10%, transparent); }
+.mstep button { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: color-mix(in srgb, currentColor 10%, transparent); }
 .mstep svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 /* score */
@@ -130,7 +130,7 @@ svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-widt
 .tx { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 62px; padding: 6px 4px; text-align: left; border-bottom: 1px solid var(--line); border-radius: 0; }
 .tx:last-child { border-bottom: 0; }
 button.tx:hover { background: var(--soft); }
-.ic { width: 38px; height: 38px; border-radius: 99px; display: grid; place-items: center; flex: none; background: var(--soft); }
+.ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; flex: none; background: var(--soft); }
 .ic svg.i { width: 18px; height: 18px; }
 .ic.inc { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--in); }
 .ic.exp { background: color-mix(in srgb, var(--coral) 15%, transparent); color: var(--coral); }
@@ -236,7 +236,7 @@ button.tx:hover { background: var(--soft); }
   .main { padding: 0 16px calc(110px + env(safe-area-inset-bottom, 0px)); border-right: 0; }
   .mhead { display: flex; position: sticky; top: 0; z-index: 10; align-items: center; justify-content: space-between; gap: 8px; margin: 0 -16px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
   .bookbtn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px 0 6px; border-radius: 999px; background: var(--card); font-weight: 400; max-width: 70vw; }
-  .bookbtn .bdot { width: 32px; height: 32px; border-radius: 99px; }
+  .bookbtn .bdot { width: 32px; height: 32px; border-radius: 10px; }
   .bookbtn .bdot svg.i { width: 18px; height: 18px; }
   .bookbtn > span:nth-child(2) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .view { display: flex; flex-direction: column; gap: 10px; padding-top: 6px; }
@@ -544,7 +544,7 @@ html, body { overscroll-behavior: none; }
 .lt .v { overflow-wrap: anywhere; }
 .lt.in { background: color-mix(in srgb, var(--in) 10%, transparent); }
 .lt.out { background: color-mix(in srgb, var(--coral) 10%, transparent); }
-.lic { width: 28px; height: 28px; border-radius: 99px; display: grid; place-items: center; margin-bottom: 4px; }
+.lic { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; margin-bottom: 4px; }
 .lic svg.i { width: 16px; height: 16px; }
 .lt.in .lic { background: var(--accent); color: var(--on-accent); }
 .lt.out .lic { background: var(--coral); color: var(--bg); }
@@ -556,7 +556,7 @@ html, body { overscroll-behavior: none; }
 .chips { margin-top: 14px; align-items: center; }
 .chip { padding: 0 12px 0 10px; background: color-mix(in srgb, currentColor 4%, transparent); }
 .chip .cn { color: var(--muted); }
-.chip .cic { width: 24px; height: 24px; border-radius: 99px; display: grid; place-items: center; margin-left: -4px; }
+.chip .cic { width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; margin-left: -4px; }
 .chip .cic svg.i { width: 14px; height: 14px; }
 .chip.cout .cic { background: color-mix(in srgb, var(--coral) 18%, transparent); color: var(--coral); }
 .chip.cin .cic { background: color-mix(in srgb, var(--in) 22%, transparent); color: var(--in); }
