@@ -48,20 +48,21 @@ function barChart(s, W = 760) {
   for (let v = 0; v <= top; v += step) g += '<text x="' + (L - 12) + '" y="' + (y(v) + 4) + '" text-anchor="end" font-size="13" fill="var(--muted)">' + (v / 10000).toLocaleString('ko-KR') + '만</text>';
   for (let i = 1; i < s.length; i++) g += '<line x1="' + (L + gw * i) + '" x2="' + (L + gw * i) + '" y1="' + Tp + '" y2="' + y(0) + '" stroke="var(--line)" stroke-dasharray="2 6"/>';
   g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="var(--line)"/>';
-  const pts = []; let bars = '';
+  const pts = []; let bars = '', hits = '';
   s.forEach((d, i) => {
     const cx = L + gw * i + gw / 2, last = i === s.length - 1, op = last ? 1 : .55;
     const pill = (x, v, gid) => { const h = Math.max(bw, y(0) - y(v)); return v ? '<rect x="' + x + '" y="' + (y(0) - h) + '" width="' + bw + '" height="' + h + '" rx="' + bw / 2 + '" fill="url(#' + gid + ')" opacity="' + op + '"/>' : ''; };
     bars += pill(cx - bw - 4, d.inc, 'gI') + pill(cx + 4, d.exp, 'gE');
     bars += '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle" font-size="13" fill="' + (last ? 'var(--ink)' : 'var(--muted)') + '" font-weight="' + (last ? 600 : 400) + '">' + monthLabel(d.m) + '</text>';
     pts.push([cx, y(Math.max(0, d.inc - d.exp)), d.inc - d.exp]);
+    hits += '<rect class="hit" x="' + (L + gw * i) + '" y="' + Tp + '" width="' + gw + '" height="' + (H - Tp) + '" fill="transparent" data-m="' + d.m + '" data-inc="' + d.inc + '" data-exp="' + d.exp + '"/>';
   });
   let line = 'M' + pts[0][0] + ' ' + pts[0][1];
-  for (let i = 0; i < pts.length - 1; i++) { const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2; line += ' C' + (p1[0] + (p2[0] - p0[0]) / 6) + ' ' + (p1[1] + (p2[1] - p0[1]) / 6) + ',' + (p2[0] - (p3[0] - p1[0]) / 6) + ' ' + (p2[1] - (p3[1] - p1[1]) / 6) + ',' + p2[0] + ' ' + p2[1]; }
+  for (let i = 0; i < pts.length - 1; i++) { const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2; const yb = y(0), c1 = Math.min(yb, p1[1] + (p2[1] - p0[1]) / 6), c2 = Math.min(yb, p2[1] - (p3[1] - p1[1]) / 6); line += ' C' + (p1[0] + (p2[0] - p0[0]) / 6) + ' ' + c1 + ',' + (p2[0] - (p3[0] - p1[0]) / 6) + ' ' + c2 + ',' + p2[0] + ' ' + p2[1]; }
   const lp = pts[pts.length - 1], tag = (lp[2] >= 0 ? '+' : '−') + Math.round(Math.abs(lp[2]) / 10000).toLocaleString('ko-KR') + '만', tw = tag.length * 8 + 20, ty = Math.max(2, lp[1] - 44);
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="최근 6개월 들어온 돈과 나간 돈"><defs><linearGradient id="gI" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent)" stop-opacity=".35"/></linearGradient><linearGradient id="gE" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--coral)"/><stop offset="1" stop-color="var(--coral)" stop-opacity=".35"/></linearGradient><radialGradient id="gH"><stop offset="0" stop-color="var(--accent)" stop-opacity=".45"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></radialGradient></defs>' + g + bars +
     '<path d="' + line + '" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round" opacity=".85"/><circle cx="' + lp[0] + '" cy="' + lp[1] + '" r="28" fill="url(#gH)"/><circle cx="' + lp[0] + '" cy="' + lp[1] + '" r="5.5" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/>' +
-    '<g transform="translate(' + Math.min(W - tw, lp[0] - tw / 2) + ' ' + ty + ')"><rect width="' + tw + '" height="26" rx="13" fill="var(--accent)"/><text x="' + tw / 2 + '" y="17.5" text-anchor="middle" font-size="13" font-weight="600" fill="var(--on-accent)">' + tag + '</text></g></svg>';
+    '<g transform="translate(' + Math.min(W - tw, lp[0] - tw / 2) + ' ' + ty + ')"><rect width="' + tw + '" height="26" rx="13" fill="var(--accent)"/><text x="' + tw / 2 + '" y="17.5" text-anchor="middle" font-size="13" font-weight="600" fill="var(--on-accent)">' + tag + '</text></g>' + hits + '</svg>';
 }
 function areaChart(vals, labels) {
   const W = 760, H = 220, L = 12, R = 12, Tp = 44, B = 30, n = vals.length;
@@ -87,42 +88,36 @@ function assetGroups() {
 }
 
 /* ---------- views ---------- */
-function heroAccts(m) {
-  const list = monthTx(m), rows = accts().map(a => {
-    const x = list.filter(t => t.account_id === a.id), i = x.filter(t => t.type === 'income').reduce((p, t) => p + Number(t.amount), 0), e = x.filter(t => t.type === 'expense').reduce((p, t) => p + Number(t.amount), 0);
-    return { a, i, e, n: x.length };
-  });
+function heroAccts() {
   const t0 = todayStr(), bal = {}; accts().forEach(a => { bal[a.id] = Number(a.initial_balance || 0); });
   bookTx().forEach(t => { if (t.date > t0) return; const v = Number(t.amount); if (t.type === 'income') { if (t.account_id in bal) bal[t.account_id] += v; } else if (t.type === 'expense') { if (t.account_id in bal) bal[t.account_id] -= v; } else { if (t.account_id in bal) bal[t.account_id] -= v; if (t.to_account_id in bal) bal[t.to_account_id] += v; } });
-  const none = list.filter(t => !t.account_id || !acctOf(t.account_id)).length, total = Object.values(bal).reduce((a, b) => a + b, 0);
-  if (!rows.length) return '';
-  return '<div class="hacc"><div class="kv hacc-h"><span>계좌 잔액</span><span class="strong">' + won(total) + '</span></div>' + rows.map(r => '<div class="hac"><span class="hic">' + icon(acctIcon(r.a)) + '</span><span class="mid"><span class="hn">' + esc(r.a.name) + '</span><span class="small muted">' + acctLabel(r.a.type) + '</span></span><span class="hv"><span>' + won(bal[r.a.id]) + '</span><span class="small muted">' + (r.i || r.e ? '이번 달 ' + (r.i ? '+' + man(r.i).replace('원', '') + ' ' : '') + (r.e ? '−' + man(r.e).replace('원', '') : '') : '이번 달 거래 없음') + '</span></span></div>').join('') + (none ? '<div class="small muted">계좌 없는 거래 ' + none + '건</div>' : '') + '</div>';
+  if (!accts().length) return '';
+  return '<div class="hacc">' + accts().map(a => '<button class="hac" data-acct="' + a.id + '">' + icon(acctIcon(a)) + '<span class="hn">' + esc(a.name) + '</span><b>' + won(bal[a.id]) + '</b></button>').join('') + '</div>';
 }
-function heroMore(m, now) {
+function heroMore(m) {
   const o = outlook(m);
-  if (!o) { const r = now.inc ? Math.round((now.inc - now.exp) / now.inc * 100) : null; return '<div class="hmore"><div class="kv"><span>' + monthLabel(m) + ' 마감</span><span class="strong">' + (r == null ? '들어온 돈 없음' : '들어온 돈의 ' + r + '%를 남겼어요') + '</span></div></div>'; }
+  if (!o) return '';
   const used = o.used == null ? null : Math.round(o.used * 100), time = Math.round(o.day / o.dim * 100);
-  return '<div class="hmore"><div class="kv"><span>월말 예상</span><span class="strong">' + signed(o.end) + '</span></div>' +
-    '<div class="small muted">' + (o.n ? '아직 기록 안 된 반복 거래 ' + o.n + '건' + (o.out ? ' (나갈 돈 ' + won(o.out) + (o.inn ? ', 들어올 돈 ' + won(o.inn) : '') + ')' : o.inn ? ' (들어올 돈 ' + won(o.inn) + ')' : '') + '을 반영했어요' : '이번 달 반복 거래는 모두 기록됐어요') + '</div>' +
-    (used == null ? '' : '<div class="pace"><div class="kv small"><span>들어온 돈의 <b>' + used + '%</b>를 썼어요</span><span class="muted">이번 달 ' + time + '% 지남</span></div><div class="ptrack"><i style="width:' + Math.min(100, used) + '%"></i><em style="left:' + time + '%"></em></div></div>') + '</div>';
+  return '<div class="hmore"><div class="kv"><span class="lbl2">월말 예상</span><b>' + signed(o.end) + '</b></div>' +
+    (used == null ? '' : '<div class="ptrack" title="들어온 돈의 ' + used + '% 사용 · 이번 달 ' + time + '% 지남"><i style="width:' + Math.min(100, used) + '%"></i><em style="left:' + time + '%"></em></div><div class="kv small"><span>' + used + '% 썼어요</span><span>' + time + '% 지남</span></div>') + '</div>';
 }
 function homeView() {
   const m = V.month, now = monthSum(m), prev = monthSum(addMonths(m, -1)), net = now.inc - now.exp, diff = net - (prev.inc - prev.exp), sc = score(m);
   const recent = sortTx(bookTx()), shown = recent.slice(0, V.showN), rest = recent.length - shown.length;
   const rt = recThisMonth(), alerts = computeAlerts(), isP = book().kind === 'personal';
   const nw = netWorthAt(ym(todayStr())), nwd = nw - netWorthAt(addMonths(ym(todayStr()), -1));
-  const s6 = series(m), avgI = s6.reduce((x, d) => x + d.inc, 0) / 6, avgE = s6.reduce((x, d) => x + d.exp, 0) / 6;
+  const nM = isMobile() ? 6 : 12, s6 = series(m, nM), nUsed = Math.max(1, s6.filter(d => d.inc || d.exp).length), avgI = s6.reduce((x, d) => x + d.inc, 0) / nUsed, avgE = s6.reduce((x, d) => x + d.exp, 0) / nUsed;
   const col = isP ? 's4' : 's6';
   return '<section class="card hero s6 m1"><div class="card-h">' + mstep('hm', m, ym(todayStr())).replace('<span>' + m.slice(0, 4) + '년 ' + monthLabel(m), '<span class="muted">' + monthLabel(m) + ' 남은 돈') + '</div>' +
-      '<div class="num">' + signed(net) + '</div>' + heroMore(m, now) + heroAccts(m) + '<div class="stats three"><div><span class="small muted lbl in"><svg viewBox="0 0 18 18"><path d="M5 9h8M9 5v8"/></svg>들어온 돈</span><span class="v">+' + won(now.inc) + '</span></div><div><span class="small muted lbl out"><svg viewBox="0 0 18 18"><path d="M5 9h8"/></svg>나간 돈</span><span class="v">−' + won(now.exp) + '</span></div><div><span class="small muted">지난달보다</span><span class="v">' + signed(diff) + '</span></div></div></section>' +
+      '<div class="num">' + signed(net) + '</div>' + heroMore(m) + heroAccts() + '<div class="stats three"><div><span class="small muted lbl in"><svg viewBox="0 0 18 18"><path d="M5 9h8M9 5v8"/></svg>들어온 돈</span><span class="v">+' + won(now.inc) + '</span></div><div><span class="small muted lbl out"><svg viewBox="0 0 18 18"><path d="M5 9h8"/></svg>나간 돈</span><span class="v">−' + won(now.exp) + '</span></div><div><span class="small muted">지난달보다</span><span class="v">' + signed(diff) + '</span></div></div></section>' +
     '<section class="card score s6 m2"><div class="glow"></div><div class="card-h"><span>재무 건강 점수</span><span class="small muted">' + monthLabel(m) + ' 기준</span></div><div class="kv"><span class="big">' + sc.v + '</span><span class="strong">' + sc.grade + '</span></div>' +
-      '<div class="facs">' + sc.f.map(f => '<div class="fac"><span><span>' + f.k + '</span><span class="small muted">' + f.note + '</span></span><span class="fv">' + f.v + '</span><span class="fst ' + f.st[1] + '">' + f.st[0] + '</span><span class="fbar"><i style="width:' + Math.round(f.p / f.max * 100) + '%"></i></span></div>').join('') + '</div><div class="bar"><span class="marker" style="left:calc(' + sc.v + '% - 1px)"></span></div></section>' +
+      '<div class="facs">' + sc.f.map(f => '<div class="fac" title="' + esc(f.note) + '"><span>' + f.k + '</span><b>' + f.v + '</b><span class="fst ' + f.st[1] + '">' + f.st[0] + '</span></div>').join('') + '</div><div class="bar"><span class="marker" style="left:calc(' + sc.v + '% - 1px)"></span></div></section>' +
     '<section class="card s12 m3"><div class="card-h"><span class="strong">최근 거래 <span class="small muted">' + recent.length + '건</span></span><button class="golink" data-go="list">전체 보기 ›</button></div><div>' + (shown.length ? shown.map(t => txRow(t, { date: true })).join('') : '<div class="empty">아직 거래가 없어요. 거래 추가로 시작해 보세요.</div>') + '</div>' + (rest > 0 ? '<button class="more" data-more>' + Math.min(10, rest) + '건 더 보기</button>' : '') + '</section>' +
     '<section class="card ' + col + ' m4"><div class="card-h"><span class="strong">이번 달 반복 거래 <span class="small muted">' + rt.filter(x => x.done).length + '/' + rt.length + ' 완료</span></span>' + '<button class="golink" data-go="settings">관리 ›</button></div>' +
       (rt.length ? rt.slice().sort((a, b) => (a.done - b.done) || a.due.localeCompare(b.due)).slice(0, 7).map(({ r, due, done }) => '<button class="row" data-rec="' + r.id + '"><span class="mid"><div>' + esc(r.name) + '</div><div class="small muted">' + shortDate(due) + ' · ' + (done ? '완료' : '예정') + '</div></span><span class="small strong ' + (r.type === 'income' ? 'up' : 'down') + '">' + won(r.amount) + '</span></button>').join('') + '' : '<div class="empty small">등록된 반복 거래가 없어요</div>') + '</section>' +
     '<section class="card ' + col + ' m5"><div class="card-h"><span class="strong">알림 <span class="small muted">' + (alerts.length ? alerts.length + '건' : '') + '</span></span><button class="golink" data-go="alerts">전체 보기 ›</button></div>' + (alerts.length ? alerts.slice(0, 3).map(alertRow).join('') : '<div class="empty small">지금은 알릴 게 없어요</div>') + '</section>' +
     (isP ? '<section class="card s4 m6"><div class="card-h"><span class="strong">내 자산</span><button class="golink" data-go="assets">자산 보기 ›</button></div><div class="kv"><span class="muted">순자산</span><span class="strong">' + won(nw) + '</span></div><div class="kv small"><span class="muted">지난달보다</span><span class="' + (nwd >= 0 ? 'up' : 'down') + '">' + signed(nwd) + '</span></div>' + (assets().length ? assetBar() + '<div>' + assets().slice().sort((a, b) => Math.abs(signedVal(b)) - Math.abs(signedVal(a))).slice(0, 5).map(a => '<button class="row" data-asset="' + a.id + '"><span class="ic ' + (a.type === 'loan' ? 'exp' : 'inc') + '">' + icon(assetIcon(a.type)) + '</span><span class="mid"><div>' + esc(a.name) + '</div><div class="small muted">' + assetLabel(a.type) + '</div></span><span class="small strong' + (a.type === 'loan' ? ' down' : '') + '">' + won(signedVal(a)) + '</span></button>').join('') + '</div>' : '<div class="small muted">예금, 주식, 코인, 부동산, 대출을 적어 두면 순자산 추이를 보여드려요.</div>') + '</section>' : '') +
-    '<section class="card chart s12 m7"><div class="card-h"><span class="strong">최근 6개월</span><span class="legend small muted"><span><i style="background:var(--accent)"></i>들어온 돈</span><span><i style="background:var(--coral)"></i>나간 돈</span><span>— 남은 돈</span></span></div>' + barChart(s6, isMobile() ? 760 : 1400) +
+    '<section class="card chart s12 m7"><div class="card-h"><span class="strong">최근 ' + nM + '개월</span><span class="legend small muted"><span><i style="background:var(--accent)"></i>들어온 돈</span><span><i style="background:var(--coral)"></i>나간 돈</span><span>— 남은 돈</span></span></div>' + barChart(s6, isMobile() ? 760 : 1400) + '<div class="ctip" hidden></div>' +
       '<div class="stats" style="margin-top:0"><div><span class="small muted">월평균 들어온 돈</span><span class="v">' + won(avgI) + '</span></div><div><span class="small muted">월평균 나간 돈</span><span class="v">' + won(avgE) + '</span></div><div><span class="small muted">월평균 남은 돈</span><span class="v">' + signed(avgI - avgE) + '</span></div></div></section>';
 }
 
@@ -511,6 +506,7 @@ function shrinkImage(file) {
 /* ---------- page events ---------- */
 app.addEventListener('click', async e => {
   const t = e.target;
+  if (t.closest && t.closest('rect.hit')) { chartTip(e); return; }
   const el = sel => t.closest(sel);
   let x;
   if ((x = el('[data-go]'))) { go(x.dataset.go); return; }
@@ -560,6 +556,22 @@ app.addEventListener('click', async e => {
   if (el('[data-trashmore]')) { V.trashN = (V.trashN || 10) + 10; render(); return; }
   if (el('[data-logout]')) { if (S.demo) { location.href = location.pathname; return; } await signOut(); location.reload(); }
 });
+function chartTip(e) {
+  const h = e.target.closest && e.target.closest('rect.hit'), card = e.target.closest && e.target.closest('.chart');
+  const tip = card && card.querySelector('.ctip');
+  document.querySelectorAll('.chart .hit.on').forEach(r => r.classList.remove('on'));
+  if (!tip) return;
+  if (!h) { tip.hidden = true; return; }
+  h.classList.add('on');
+  const i = +h.dataset.inc, x = +h.dataset.exp, m = h.dataset.m, cr = card.getBoundingClientRect(), hr = h.getBoundingClientRect();
+  tip.innerHTML = '<b>' + m.slice(0, 4) + '년 ' + monthLabel(m) + '</b><span><i style="background:var(--accent)"></i>들어온 돈 <b>' + won(i) + '</b></span><span><i style="background:var(--coral)"></i>나간 돈 <b>' + won(x) + '</b></span><span>남은 돈 <b>' + signed(i - x) + '</b></span>';
+  tip.hidden = false;
+  const left = hr.left - cr.left + hr.width / 2, w = tip.offsetWidth;
+  tip.style.left = Math.max(12, Math.min(cr.width - w - 12, left - w / 2)) + 'px';
+  tip.style.top = (hr.top - cr.top + 4) + 'px';
+}
+app.addEventListener('mousemove', chartTip);
+app.addEventListener('mouseleave', () => document.querySelectorAll('.ctip').forEach(t => { t.hidden = true; }));
 app.addEventListener('input', e => {
   if (e.target.id === 'q' || e.target.id === 'qtop') { V.q = e.target.value; if (V.q && V.view !== 'list') V.view = 'list'; render(); }
 });
