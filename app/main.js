@@ -414,10 +414,21 @@ function sheet(title, html, handlers, cls) {
 // Mobile: keep the bottom sheet inside the visible area when the keyboard opens (iOS shrinks the visual viewport).
 function fitSheet() {
   const sh = layer.querySelector('.sheet'), vv = window.visualViewport; if (!sh) return;
-  if (!isMobile() || !vv) { sh.style.removeProperty('--vvh'); sh.style.removeProperty('--vvb'); return; }
-  sh.style.setProperty('--vvh', vv.height + 'px');
-  sh.style.setProperty('--vvb', Math.max(0, window.innerHeight - vv.height - vv.offsetTop) + 'px');
+  const kb = isMobile() && vv && vv.height < window.innerHeight * 0.8; // only when the keyboard is up
+  if (!kb) { sh.style.removeProperty('--vvh'); sh.style.removeProperty('--vvb'); return; }
+  sh.style.setProperty('--vvh', Math.round(vv.height) + 'px');
+  sh.style.setProperty('--vvb', Math.round(Math.max(0, window.innerHeight - vv.height - vv.offsetTop)) + 'px');
 }
+// iOS: stop the whole sheet/page from rubber-banding. Only the sheet's own content may scroll, and not past its ends.
+let tY = 0;
+document.addEventListener('touchstart', e => { tY = e.touches[0].clientY; }, { passive: true });
+document.addEventListener('touchmove', e => {
+  if (!layer.firstChild) return;
+  const sh = e.target.closest && e.target.closest('.sheet');
+  if (!sh) { e.preventDefault(); return; }
+  const dy = e.touches[0].clientY - tY, top = sh.scrollTop <= 0, end = sh.scrollTop + sh.clientHeight >= sh.scrollHeight - 1;
+  if (sh.scrollHeight <= sh.clientHeight || (top && dy > 0) || (end && dy < 0)) e.preventDefault();
+}, { passive: false });
 if (window.visualViewport) { visualViewport.addEventListener('resize', fitSheet); visualViewport.addEventListener('scroll', fitSheet); }
 // Keep the page behind a sheet from moving (iOS scrolls the body when an input in a sheet gets focus).
 let lockY = null;

@@ -473,5 +473,12 @@ button.htile:active { transform: scale(.99); }
    mobile sheets follow the visible area above the keyboard. */
 @media (min-width: 960px) { .sheet { top: 6vh; transform: translateX(-50%); max-height: 88vh; } }
 @media (max-width: 959px) {
-  .sheet { bottom: var(--vvb, 0px); max-height: calc(var(--vvh, 100vh) - 24px); transition: bottom .12s; }
+  .sheet { bottom: var(--vvb, 0px); max-height: min(92vh, calc(var(--vvh, 100vh) - 24px)); }
 }
+html, body { overscroll-behavior: none; }
+/* Sheets never move sideways: clip horizontal overflow and let wide inputs shrink */
+.sheet { overflow-x: hidden; touch-action: pan-y; }
+.sheet * { min-width: 0; }
+.sheet input, .sheet select, .sheet textarea { max-width: 100%; width: 100%; box-sizing: border-box; }
+.sheet input[type="month"], .sheet input[type="date"], .sheet input[type="time"] { -webkit-appearance: none; appearance: none; }
+.sheet .grid2 > * { min-width: 0; }
