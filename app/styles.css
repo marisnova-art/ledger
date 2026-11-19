@@ -527,3 +527,6 @@ html, body { overscroll-behavior: none; }
 .rc-acts .btn-line, .rc-add { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; white-space: nowrap; width: auto; }
 
 .rsum { margin-top: 12px; display: grid; gap: 4px; }
+.hd { position: relative; }
+.hd .hn { position: absolute; top: -6px; right: -3px; font-style: normal; font-size: 10px; line-height: 14px; min-width: 14px; padding: 0 3px; border-radius: 99px; background: var(--accent); color: var(--on-accent); }
+.hd.inc { background: color-mix(in srgb, var(--in) 25%, transparent); }

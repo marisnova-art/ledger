@@ -157,12 +157,13 @@ function heroTiles(m) {
   }
   // 3. upcoming payments (7 days) / past: biggest day
   if (isNow) {
-    const days = [...Array(7)].map((_, i) => addDays(t, i)), due = [];
-    recs().filter(r => r.active !== false && r.type === 'expense').forEach(r => [m, addMonths(m, 1)].forEach(mm => { const d = dueDate(r, mm); if (d >= days[0] && d <= days[6] && !recDone(r, mm)) due.push({ r, d }); }));
-    due.sort((a, b) => a.d.localeCompare(b.d));
-    const sum = due.reduce((a, x) => a + Number(x.r.amount || 0), 0), nx = due[0];
-    out.push(tile('data-go="settings"', 'calendar', '다가오는 결제', '7일', due.length ? won(sum) : '없어요', nx ? shortDate(nx.d) + ' ' + esc(nx.r.name) + (due.length > 1 ? ' 외 ' + (due.length - 1) + '건' : '') : '앞으로 7일은 결제가 없어요',
-      '<div class="hdays">' + days.map(d => '<span class="hd' + (due.some(x => x.d === d) ? ' on' : '') + (d === t ? ' today' : '') + '"><em>' + weekday(d) + '</em>' + Number(d.slice(8)) + '</span>').join('') + '</div>'));
+    const days = [...Array(7)].map((_, i) => addDays(t, i)), due = upcoming(days[0], days[6]);
+    const out_ = due.filter(x => x.r.type === 'expense'), in_ = due.filter(x => x.r.type === 'income');
+    const sum = out_.reduce((a, x) => a + Number(x.r.amount || 0), 0), sumI = in_.reduce((a, x) => a + Number(x.r.amount || 0), 0), nx = due[0];
+    const sameDay = nx ? due.filter(x => x.d === nx.d) : [];
+    const note = nx ? shortDate(nx.d) + ' ' + esc(nx.r.name) + (sameDay.length > 1 ? ' 외 ' + (sameDay.length - 1) + '건' : '') + (due.length > sameDay.length ? ' · 7일간 ' + due.length + '건' : '') : '앞으로 7일은 예정된 거래가 없어요';
+    out.push(tile('data-upcoming', 'calendar', '다가오는 일정', '7일', due.length ? (sum ? '−' + won(sum) : '') + (sumI ? (sum ? ' <span class="small up">+' + won(sumI) + '</span>' : '+' + won(sumI)) : '') : '없어요', note,
+      '<div class="hdays">' + days.map(d => { const n = due.filter(x => x.d === d), o = n.some(x => x.r.type === 'expense'); return '<span class="hd' + (n.length ? (o ? ' on' : ' inc') : '') + (d === t ? ' today' : '') + '"><em>' + weekday(d) + '</em>' + Number(d.slice(8)) + (n.length > 1 ? '<i class="hn">' + n.length + '</i>' : '') + '</span>'; }).join('') + '</div>'));
   } else {
     const a = daily(m).slice(0, dim), top = Math.max(1, ...a), mi = a.indexOf(Math.max(...a));
     const tx = monthTx(m).filter(x => x.type === 'expense' && +x.date.slice(8) === mi + 1).sort((x, y) => y.amount - x.amount)[0];
@@ -197,6 +198,22 @@ function recSum(rt) {
   const o = tot('expense'), i = tot('income');
   return '<div class="rsum">' + (o ? kv('한 달 합계 · ' + T('out'), '−' + won(o), 'down') : '') + (i ? kv('한 달 합계 · ' + T('in'), '+' + won(i), 'up') : '') +
     (rt ? (left('expense') ? kv('이번 달 남은 금액 · ' + T('out'), '−' + won(left('expense')), 'down') : '') + (left('income') ? kv('이번 달 남은 금액 · ' + T('in'), '+' + won(left('income')), 'up') : '') : '') + '</div>';
+}
+// Recurring items (in and out) due between from and to that are not recorded yet, by date.
+function upcoming(from, to) {
+  const due = [];
+  recs().filter(r => r.active !== false).forEach(r => [ym(from), addMonths(ym(from), 1)].forEach(mm => { const d = dueDate(r, mm); if (d >= from && d <= to && !recDone(r, mm)) due.push({ r, d }); }));
+  return due.sort((a, b) => a.d.localeCompare(b.d) || (a.r.type === b.r.type ? 0 : a.r.type === 'income' ? 1 : -1));
+}
+function openUpcoming() {
+  const t = todayStr(), end = addDays(t, 6), list = upcoming(t, end), later = upcoming(addDays(t, 7), addDays(t, 37));
+  const row = x => '<button class="row" data-uprec="' + x.r.id + '" data-updue="' + x.d + '"><span class="ic ' + (x.r.type === 'income' ? 'inc' : 'exp') + '">' + icon('repeat') + '</span><span class="mid"><div>' + esc(x.r.name) + '</div><div class="small muted">' + (x.d === t ? '오늘' : x.d === addDays(t, 1) ? '내일' : (Math.round((new Date(x.d) - new Date(t)) / 864e5)) + '일 뒤') + ' · 눌러서 기록</div></span><span class="strong ' + (x.r.type === 'income' ? 'up' : 'down') + '">' + (x.r.type === 'income' ? '+' : '−') + won(x.r.amount) + '</span></button>';
+  const byDay = l => { const g = {}; l.forEach(x => { (g[x.d] = g[x.d] || []).push(x); }); return Object.keys(g).map(d => { const o = g[d].filter(x => x.r.type === 'expense').reduce((a, x) => a + Number(x.r.amount || 0), 0), i = g[d].filter(x => x.r.type === 'income').reduce((a, x) => a + Number(x.r.amount || 0), 0); return '<div class="dayband"><span class="dl">' + shortDate(d) + ' ' + weekday(d) + '</span><span class="muted">' + g[d].length + '건' + (o ? ' · −' + won(o) : '') + (i ? ' · +' + won(i) : '') + '</span></div>' + g[d].map(row).join(''); }).join(''); };
+  const tot = (l, ty) => l.filter(x => x.r.type === ty).reduce((a, x) => a + Number(x.r.amount || 0), 0);
+  const html = '<div class="rsum" style="margin:0 0 8px">' + '<div class="kv small"><span class="muted">7일 예정 · ' + T('out') + '</span><span class="down">−' + won(tot(list, 'expense')) + '</span></div>' + (tot(list, 'income') ? '<div class="kv small"><span class="muted">7일 예정 · ' + T('in') + '</span><span class="up">+' + won(tot(list, 'income')) + '</span></div>' : '') + '</div>' +
+    (list.length ? byDay(list) : '<div class="empty small">앞으로 7일은 예정된 거래가 없어요</div>') +
+    (later.length ? '<div class="card-h" style="margin-top:16px"><span class="strong">그 다음 30일</span></div>' + byDay(later) : '');
+  sheet('다가오는 일정', html, { click: e => { const b = e.target.closest('[data-uprec]'); if (b) { closeSheet(); recordRec(b.dataset.uprec, b.dataset.updue); } } });
 }
 function homeView() {
   const m = V.month, now = monthSum(m), prev = monthSum(addMonths(m, -1)), net = now.inc - now.exp, diff = net - (prev.inc - prev.exp), sc = score(m);
@@ -909,6 +926,7 @@ app.addEventListener('click', async e => {
   if ((x = el('[data-kind]'))) { V.kind = x.dataset.kind; render(); return; }
   if ((x = el('[data-compcat]'))) { if (!x.dataset.compcat) return; V.view = 'list'; V.lm = V.month; V.q = ''; V.kind = 'all'; V.catF = x.dataset.compcat; render(); window.scrollTo(0, 0); return; }
   if ((x = el('[data-catf]'))) { V.catF = V.catF === x.dataset.catf ? '' : x.dataset.catf; render(); return; }
+  if ((x = el('[data-upcoming]'))) { openUpcoming(); return; }
   if ((x = el('[data-alf]'))) { V.alF = x.dataset.alf; render(); return; }
   if ((x = el('[data-adone]'))) { const id = x.dataset.adone; dismiss(id); render(); toast('알림을 지웠어요', () => dismiss(id, false)); return; }
   if ((x = el('[data-aact]'))) {
