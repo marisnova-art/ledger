@@ -163,7 +163,7 @@ function heroTiles(m) {
   const rows = Object.entries(bc).sort((a, b) => b[1] - a[1]), tot = rows.reduce((a, r) => a + r[1], 0), top3 = rows.slice(0, 3), OPS = [1, .55, .3];
   const nm = id => (catOf(id) || {}).name || '분류 없음';
   out.push(tile(top3.length ? 'data-compcat="' + (top3[0][0] || '') + '"' : 'data-go="list"', 'pie', '많이 쓴 분류', rows.length ? rows.length + '개 분류' : '', top3.length ? esc(nm(top3[0][0])) + ' ' + won(top3[0][1]) : '없어요', top3.length ? '나간 돈의 ' + Math.round(top3[0][1] / tot * 100) + '%' : '',
-    '<div class="hstack">' + top3.map((r, i) => '<b style="width:' + (r[1] / tot * 100) + '%;opacity:' + OPS[i] + '"></b>').join('') + '</div><span class="small hleg">' + top3.map((r, i) => '<span><i style="opacity:' + OPS[i] + '"></i>' + esc(nm(r[0])) + ' ' + Math.round(r[1] / tot * 100) + '%</span>').join('') + '</span>'));
+    '<div class="hstack">' + top3.map((r, i) => '<b style="width:' + (r[1] / tot * 100) + '%;opacity:' + OPS[i] + '"></b>').join('') + '</div><span class="small hleg">' + top3.slice(0, 2).map((r, i) => '<span><i style="opacity:' + OPS[i] + '"></i>' + esc(nm(r[0])) + ' ' + Math.round(r[1] / tot * 100) + '%</span>').join('') + '</span>'));
   return out;
 }
 const dimOfM = m => new Date(Date.UTC(+m.slice(0, 4), +m.slice(5), 0)).getUTCDate();
