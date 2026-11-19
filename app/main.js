@@ -1,10 +1,10 @@
 // LEDGER v2 — app entry: sign-in, layout (PC sidebar / mobile tab bar), views and edit sheets.
 import { CONFIG } from './config.js';
-import { S, initClient, signIn, signOut, loadAll, loadDemo, put, putMany, remove, putSnap, restoreTx, purgeTx, restoreItem, purgeItem } from './store.js';
+import { S, initClient, signIn, signOut, loadAll, loadDemo, put, putMany, remove, putSnap, restoreTx, purgeTx, restoreItem, purgeItem, uploadReceipt, receiptUrl } from './store.js';
 import { CI, CI_GROUPS } from './icons.js';
 import { icon, esc, suggestIcons, won, signed, man, uid, todayStr, nowTime, ym, addMonths, addDays, monthLabel, weekday, shortDate, iconForName, acctIcon, acctLabel, ACCT_TYPES } from './util.js';
 import { cur, book, bookTx, sumOf, cats, accts, mainAcct, recs, assets, catOf, acctOf, monthSum, monthTx, series, score, outlook, recThisMonth, dueDate, recDone, computeAlerts, dismiss, markSeen, ASSET_TYPES, assetLabel, assetIcon, signedVal, netWorthAt } from './calc.js';
-import { parseLine, aiParse, imageToB64, aiInfo } from './ai.js';
+import { parseLine, aiParse, imageToB64, imageToBlob, aiInfo } from './ai.js';
 
 const app = document.getElementById('app');
 const V = { view: 'home', month: ym(todayStr()), lm: ym(todayStr()), q: '', kind: 'all', catF: '', showN: 10, alF: 'all', setKind: 'expense', bpick: false };
@@ -27,8 +27,9 @@ const bookIconHtml = b => b.image_url ? '<img src="' + esc(b.image_url) + '" alt
 const KIND = { personal: '개인', business: '개인사업자', corp: '법인' };
 function txRow(t, opts = {}) {
   const c = catOf(t.category_id), a = acctOf(t.account_id), inc = t.type === 'income';
-  const sub = [c ? c.name : '분류 없음', a ? a.name : '', opts.date ? shortDate(t.date) + (isMobile() ? '' : ' ' + weekday(t.date)) : '', isMobile() ? '' : t.time || ''].filter(Boolean).join(' · ');
-  return '<button class="tx ' + (inc ? 'r-in' : 'r-out') + '" data-tx="' + t.id + '"><span class="ic ' + (inc ? 'inc' : 'exp') + '">' + icon(catIcon(c)) + '</span><span class="mid"><div>' + esc(t.description || t.vendor || (c && c.name) || '거래') + (t.recurring_id ? '<span class="rec">' + icon('repeat') + '반복</span>' : '') + '</div><div class="small muted">' + esc(sub) + '</div></span><span class="amt ' + (inc ? 'up' : 'down') + '">' + (inc ? '+' : '−') + won(t.amount) + '</span></button>';
+  const title = t.description || t.vendor || (c && c.name) || '거래';
+  const sub = [t.vendor && t.vendor !== title ? t.vendor : '', c ? c.name : '분류 없음', a ? a.name : '', opts.date ? shortDate(t.date) + (isMobile() ? '' : ' ' + weekday(t.date)) : '', isMobile() ? '' : t.time || ''].filter(Boolean).join(' · ');
+  return '<button class="tx ' + (inc ? 'r-in' : 'r-out') + '" data-tx="' + t.id + '"><span class="ic ' + (inc ? 'inc' : 'exp') + '">' + icon(catIcon(c)) + '</span><span class="mid"><div>' + esc(title) + (t.recurring_id ? '<span class="rec">' + icon('repeat') + '반복</span>' : '') + (t.receipt_path ? '<span class="rec" title="영수증 있음" aria-label="영수증 있음">' + icon('receipt') + '</span>' : '') + '</div><div class="small muted">' + esc(sub) + '</div></span><span class="amt ' + (inc ? 'up' : 'down') + '">' + (inc ? '+' : '−') + won(t.amount) + '</span></button>';
 }
 function dayGroups(list) {
   const g = {}; list.forEach(t => { (g[t.date] = g[t.date] || []).push(t); });
@@ -220,6 +221,8 @@ function advFilter(list, a) {
     if (a.max && v > a.max) return false;
     if (a.cats && a.cats.length && !a.cats.includes(t.category_id)) return false;
     if (a.accts && a.accts.length && !a.accts.includes(t.account_id)) return false;
+    if (a.rc === 'yes' && !t.receipt_path) return false;
+    if (a.rc === 'no' && t.receipt_path) return false;
     if (a.text) { const q = a.text.toLowerCase(); if (![t.description, t.vendor, t.memo].join(' ').toLowerCase().includes(q)) return false; }
     return true;
   });
@@ -231,6 +234,7 @@ function advSummary(a) {
   if (a.min || a.max) p.push((a.min ? won(a.min) : '') + ' ~ ' + (a.max ? won(a.max) : ''));
   if (a.cats && a.cats.length) p.push(a.cats.map(id => (catOf(id) || {}).name).filter(Boolean).join(', '));
   if (a.accts && a.accts.length) p.push(a.accts.map(id => (acctOf(id) || {}).name).filter(Boolean).join(', '));
+  if (a.rc === 'yes') p.push('영수증 있음'); else if (a.rc === 'no') p.push('영수증 없음');
   if (a.text) p.push('"' + a.text + '"');
   return p.join(' · ');
 }
@@ -263,7 +267,7 @@ function listView() {
       '<div>' + (list.length ? ((adv || q) ? monthGroups(sortTx(list)) : dayGroups(list)) : '<div class="empty">' + (adv || q ? '찾는 거래가 없어요' : '이 달에는 거래가 없어요') + '</div>') + '</div></div></section>';
 }
 function openAdv() {
-  const a = Object.assign({ from: addMonths(ym(todayStr()), -2), to: ym(todayStr()), kind: 'all', min: null, max: null, cats: [], accts: [], text: '' }, V.adv || {});
+  const a = Object.assign({ from: addMonths(ym(todayStr()), -2), to: ym(todayStr()), kind: 'all', min: null, max: null, cats: [], accts: [], text: '', rc: 'all' }, V.adv || {});
   a.cats = (a.cats || []).slice(); a.accts = (a.accts || []).slice();
   const fmtW = v => v ? Number(v).toLocaleString('ko-KR') : '';
   const num = id => Number((document.getElementById(id).value || '').replace(/[^0-9]/g, '')) || null;
@@ -274,6 +278,7 @@ function openAdv() {
       '<div class="seg three"><button data-advk="all" aria-pressed="' + (a.kind === 'all') + '">전체</button><button class="inc" data-advk="income" aria-pressed="' + (a.kind === 'income') + '">들어온 돈</button><button class="exp" data-advk="expense" aria-pressed="' + (a.kind === 'expense') + '">나간 돈</button></div>' +
       '<div class="grid2"><label class="field"><span>최소 금액</span><input id="advMin" inputmode="numeric" data-won value="' + fmtW(a.min) + '" placeholder="0"></label><label class="field"><span>최대 금액</span><input id="advMax" inputmode="numeric" data-won value="' + fmtW(a.max) + '" placeholder="제한 없음"></label></div>' +
       '<label class="field"><span>내용·거래처·메모</span><input id="advText" value="' + esc(a.text || '') + '" placeholder="예: 쿠팡"></label>' +
+      '<div class="field"><span>영수증</span><div class="seg three"><button data-advr="all" aria-pressed="' + (a.rc === 'all') + '">전체</button><button data-advr="yes" aria-pressed="' + (a.rc === 'yes') + '">영수증 있음</button><button data-advr="no" aria-pressed="' + (a.rc === 'no') + '">영수증 없음</button></div></div>' +
     '</div><div class="col">' +
       '<div class="field"><span>분류 (여러 개 고를 수 있어요)</span><div class="chips">' + cats().map(c => '<button class="chip" data-advc="' + c.id + '" aria-pressed="' + a.cats.includes(c.id) + '">' + icon(catIcon(c)) + esc(c.name) + '</button>').join('') + '</div></div>' +
       '<div class="field"><span>계좌·카드</span><div class="chips">' + accts().map(x => '<button class="chip" data-adva="' + x.id + '" aria-pressed="' + a.accts.includes(x.id) + '">' + icon(acctIcon(x)) + esc(x.name) + '</button>').join('') + '</div></div>' +
@@ -287,9 +292,10 @@ function openAdv() {
       const t = e.target, nowM = ym(todayStr());
       const qk = t.closest('[data-advq]'); if (qk) { read(); const k = qk.dataset.advq; a.to = nowM; a.from = k === 'all' ? '' : k === 'y' ? nowM.slice(0, 4) + '-01' : addMonths(nowM, +k); draw(); return; }
       const kk = t.closest('[data-advk]'); if (kk) { a.kind = kk.dataset.advk; pick('advk', kk); return; }
+      const rr = t.closest('[data-advr]'); if (rr) { a.rc = rr.dataset.advr; pick('advr', rr); return; }
       const cc = t.closest('[data-advc]'); if (cc) { const id = cc.dataset.advc, i = a.cats.indexOf(id); if (i >= 0) a.cats.splice(i, 1); else a.cats.push(id); cc.setAttribute('aria-pressed', i < 0); return; }
       const aa = t.closest('[data-adva]'); if (aa) { const id = aa.dataset.adva, i = a.accts.indexOf(id); if (i >= 0) a.accts.splice(i, 1); else a.accts.push(id); aa.setAttribute('aria-pressed', i < 0); return; }
-      if (t.closest('[data-advreset]')) { Object.assign(a, { from: addMonths(nowM, -2), to: nowM, kind: 'all', min: null, max: null, cats: [], accts: [], text: '' }); draw(); return; }
+      if (t.closest('[data-advreset]')) { Object.assign(a, { from: addMonths(nowM, -2), to: nowM, kind: 'all', min: null, max: null, cats: [], accts: [], text: '', rc: 'all' }); draw(); return; }
       if (t.closest('[data-advgo]')) { read(); V.adv = a; V.q = ''; V.kind = 'all'; V.catF = ''; V.view = 'list'; closeSheet(); render(); window.scrollTo(0, 0); }
     }
   };
@@ -473,16 +479,21 @@ document.addEventListener('keydown', e => {
 const pick = (attr, sel) => layer.querySelectorAll('[data-' + attr + ']').forEach(b => b.setAttribute('aria-pressed', b === sel));
 
 /* transaction add / edit */
+// Full-screen image viewer (tap anywhere to close).
+function showImage(src) {
+  const el = document.createElement('div'); el.className = 'lightbox'; el.innerHTML = '<img alt="영수증" src="' + esc(src) + '">';
+  el.addEventListener('click', () => el.remove()); document.body.appendChild(el);
+}
 function openTx(t, copy) {
   const isNew = !t || copy;
   const d = t ? Object.assign({}, t) : { type: 'expense', amount: '', date: todayStr(), time: '', description: '', vendor: '', memo: '', category_id: null, account_id: (mainAcct() || {}).id || null };
   if (copy) { d.id = null; d.date = todayStr(); d.time = ''; d.recurring_id = null; }
   if (!d.category_id) { const c = cats(d.type).filter(x => !x.hidden)[0]; d.category_id = c ? c.id : null; }
-  let ai = '', aiRes = null, aiWait = '', aiTimer = 0, imgItems = null, imgBusy = false, imgErr = '';
+  let ai = '', aiRes = null, aiWait = '', aiTimer = 0, imgItems = null, imgBusy = false, imgErr = '', imgFile = null, rcBlob = null, rcLocal = '', rcRemove = false;
   const isDup = it => bookTx().some(x => x.date === it.date && x.type === it.type && Number(x.amount) === Number(it.amount));
   const readImage = async file => {
     if (!S.sb) { toast('체험 모드에서는 사진 읽기를 쓸 수 없어요. 로그인하면 쓸 수 있어요.'); return; }
-    imgBusy = true; imgItems = null; imgErr = ''; draw();
+    imgBusy = true; imgItems = null; imgErr = ''; imgFile = file; draw();
     let items = null;
     try { const b64 = await imageToB64(file); items = await aiParse('', { sb: S.sb, cats: cats(), accts: accts(), now: nowTime(), image: b64 }); } catch (e) { items = null; }
     imgBusy = false;
@@ -535,11 +546,15 @@ function openTx(t, copy) {
       '</div><div class="col">' +
       '<div class="field"><span>분류</span><div class="chips">' + cl.map(c => '<button class="chip" data-tcat="' + c.id + '" aria-pressed="' + (d.category_id === c.id) + '">' + icon(catIcon(c)) + esc(c.name) + '</button>').join('') + '<button class="chip" data-tnewcat>' + icon('plus') + '새 분류</button></div></div>' +
       '<div class="field"><span>계좌·카드·현금</span><div class="chips">' + accts().map(a => '<button class="chip" data-tacct="' + a.id + '" aria-pressed="' + (d.account_id === a.id) + '">' + icon(acctIcon(a)) + esc(a.name) + '</button>').join('') + '<button class="chip" data-tnewacct>' + icon('plus') + '새 계좌·카드</button></div></div>' +
+      '<div class="field"><span>영수증</span>' + ((d.receipt_path && !rcRemove) || rcLocal
+        ? '<div class="rc-box"><button class="rc-thumb" data-rcview aria-label="영수증 크게 보기"><img id="rcImg" alt="영수증" src="' + esc(rcLocal || '') + '"></button><div class="rc-acts"><label class="btn-line">바꾸기<input type="file" accept="image/*" id="rcFile" hidden></label><button class="btn-line danger" data-rcdel>빼기</button></div></div>'
+        : '<label class="btn-line rc-add">' + icon('receipt') + '영수증 사진 붙이기<input type="file" accept="image/*" id="rcFile" hidden></label>') + '</div>' +
       '</div></div>' +
       (isNew ? '<button class="save" data-tsave>저장</button>' : '<div class="acts3"><button class="btn-line danger" data-tdel>삭제</button><button class="btn-line" data-tcopy>복사</button><button class="save" data-tsave>저장</button></div>'));
     const keep = document.activeElement && document.activeElement.id, pos = keep && document.activeElement.selectionStart;
     if (keep === 'aiIn' && patchAround('.ai-box', html)) return;
     sheet(isNew ? (copy ? '복사해서 추가' : '거래 추가') : '거래 고치기', html, handlers, 'wide');
+    if (d.receipt_path && !rcRemove && !rcLocal) receiptUrl(d.receipt_path).then(u => { const im = document.getElementById('rcImg'); if (im && u) im.src = u; });
     if (keep) { const el = document.getElementById(keep); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) {} } }
   };
   const readForm = () => {
@@ -549,14 +564,21 @@ function openTx(t, copy) {
     d.description = g('fDesc').value.trim(); d.vendor = g('fVendor').value.trim(); d.memo = g('fMemo').value.trim();
   };
   const saveItems = async items => {
-    const rows = items.map(it => ({ id: uid(), book_id: book().id, date: it.date, time: it.time || nowTime(), type: it.type, amount: it.amount, description: it.description, vendor: it.vendor || null, memo: null, category_id: it.category_id, account_id: it.account_id || d.account_id, to_account_id: null, recurring_id: null, created_at: new Date().toISOString() }));
+    const rows = items.map(it => ({ id: uid(), book_id: book().id, date: it.date, time: it.time || nowTime(), type: it.type, amount: it.amount, description: it.description, vendor: it.vendor || null, memo: null, category_id: it.category_id, account_id: it.account_id || d.account_id, to_account_id: null, recurring_id: null, receipt_path: it.receipt_path || null, created_at: new Date().toISOString() }));
     closeSheet(); render();
     try { await putMany('v2_transactions', rows); toast(rows.length + '건 저장했어요', async () => { for (const r of rows) await remove('v2_transactions', r.id); }); render(); } catch (e) { fail(e); }
   };
   const handlers = {
     input: e => { if (e.target.id === 'aiIn') { ai = e.target.value; clearTimeout(aiTimer); if (S.sb && ai.trim().length >= 4) aiTimer = setTimeout(askAI, 900); draw(); } else if (e.target.id === 'fAmt') { const v = e.target.value.replace(/[^0-9]/g, ''); e.target.value = v ? Number(v).toLocaleString('ko-KR') : ''; } },
     keydown: e => { if (e.target.id === 'aiIn' && e.key === 'Enter' && !e.isComposing) { e.preventDefault(); saveAI(); } },
-    change: e => { if (e.target.id === 'aiImg' && e.target.files && e.target.files[0]) readImage(e.target.files[0]); },
+    change: async e => {
+      if (e.target.id === 'aiImg' && e.target.files && e.target.files[0]) readImage(e.target.files[0]);
+      if (e.target.id === 'rcFile' && e.target.files && e.target.files[0]) {
+        if (!S.sb) { toast('체험 모드에서는 영수증을 저장할 수 없어요.'); return; }
+        readForm();
+        try { rcBlob = await imageToBlob(e.target.files[0]); if (rcLocal) URL.revokeObjectURL(rcLocal); rcLocal = URL.createObjectURL(rcBlob); rcRemove = false; draw(); } catch (er) { toast('사진을 열지 못했어요'); }
+      }
+    },
     click: async e => {
       const t2 = e.target;
       const k = t2.closest('[data-tkind]'); if (k) { readForm(); d.type = k.dataset.tkind; const c = cats(d.type).filter(x => !x.hidden)[0]; d.category_id = c ? c.id : null; draw(); return; }
@@ -564,9 +586,17 @@ function openTx(t, copy) {
       const a = t2.closest('[data-tacct]'); if (a) { d.account_id = a.dataset.tacct; pick('tacct', a); return; }
       const fq = t2.closest('[data-freq]'); if (fq) { const x = S.txs.find(y => y.id === fq.dataset.freq); Object.assign(d, { type: x.type, amount: x.amount, description: x.description, vendor: x.vendor, category_id: x.category_id, account_id: x.account_id, date: todayStr(), time: '' }); ai = ''; draw(); const f = document.getElementById('fDate'); if (f) f.focus(); return; }
       if (t2.closest('[data-aisave]')) { saveAI(); return; }
+      if (t2.closest('[data-rcview]')) { const im = document.getElementById('rcImg'); if (im && im.src) showImage(im.src); return; }
+      if (t2.closest('[data-rcdel]')) { readForm(); rcRemove = true; rcBlob = null; if (rcLocal) URL.revokeObjectURL(rcLocal); rcLocal = ''; draw(); return; }
       const ir = t2.closest('[data-imgi]'); if (ir) { const it = imgItems[+ir.dataset.imgi]; it.on = !it.on; draw(); return; }
       if (t2.closest('[data-imgclear]')) { imgItems = null; imgErr = ''; draw(); return; }
-      if (t2.closest('[data-imgsave]')) { const it = imgItems.filter(x => x.on); if (it.length) saveItems(it); return; }
+      if (t2.closest('[data-imgsave]')) {
+        const it = imgItems.filter(x => x.on); if (!it.length) return;
+        let path = null;
+        if (imgFile) { try { path = await uploadReceipt(await imageToBlob(imgFile)); } catch (er) { toast('영수증 사진은 저장하지 못했어요. 거래만 저장할게요.'); } }
+        saveItems(it.map(x => Object.assign({}, x, { receipt_path: path })));
+        return;
+      }
       if (t2.closest('[data-tnewcat]')) { readForm(); openCat(null, d.type, cid => { d.category_id = cid; draw(); }); return; }
       if (t2.closest('[data-tnewacct]')) { readForm(); openAcct(null, aid => { d.account_id = aid; draw(); }); return; }
       if (t2.closest('[data-tcopy]')) { readForm(); openTx(Object.assign({}, d), true); return; }
@@ -577,6 +607,8 @@ function openTx(t, copy) {
         const old = d.id ? Object.assign({}, S.txs.find(x => x.id === d.id)) : null;
         const row = Object.assign({}, old || {}, { id: d.id || uid(), book_id: book().id, date: d.date, time: d.time || (old && old.time) || nowTime(), type: d.type, amount: d.amount, description: d.description || (catOf(d.category_id) || {}).name || '', vendor: d.vendor || null, memo: d.memo || null, category_id: d.category_id, account_id: d.account_id, recurring_id: d.recurring_id || null });
         if (!old) row.created_at = new Date().toISOString();
+        if (rcRemove) row.receipt_path = null;
+        if (rcBlob) { try { row.receipt_path = await uploadReceipt(rcBlob); } catch (er) { toast('영수증 사진은 저장하지 못했어요'); } }
         closeSheet(); render();
         try { await put('v2_transactions', row); render(); toast(old ? '고쳤어요' : won(row.amount) + ' 저장했어요', async () => { if (old) await put('v2_transactions', old); else await remove('v2_transactions', row.id); }); } catch (er) { fail(er); }
       }
@@ -941,7 +973,7 @@ async function start() {
 // Intro screen: brand + running version (from config.js, so it shows exactly which update is loaded).
 const verText = 'v' + CONFIG.VERSION + ' · ' + CONFIG.BUILT;
 const T0 = Date.now();
-(() => { const n = document.getElementById('spName'), v = document.getElementById('spVer'); if (n) n.textContent = CONFIG.BRAND; if (v) v.textContent = verText; })();
+(() => { const n = document.getElementById('spName'), v = document.getElementById('spVer'); if (n) n.textContent = CONFIG.BRAND; if (v) v.textContent = CONFIG.SHOW_VERSION_ON_INTRO ? verText : ''; })();
 const hideSplash = () => { const sp = document.getElementById('splash'); if (!sp) return; setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 400); }, Math.max(0, 900 - (Date.now() - T0))); };
 (async () => {
   if (new URLSearchParams(location.search).has('demo')) { loadDemo(); render(); hideSplash(); return; }

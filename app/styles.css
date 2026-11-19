@@ -508,3 +508,14 @@ html, body { overscroll-behavior: none; }
 .imgrow { width: 100%; text-align: left; }
 .imgrow[aria-pressed="false"] { opacity: .45; }
 .imgrow .tag { margin-left: 6px; }
+
+/* Receipt photo on a transaction */
+.rc-add { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.rc-box { display: flex; align-items: center; gap: 12px; }
+.rc-thumb { width: 72px; height: 96px; border-radius: 12px; overflow: hidden; background: var(--soft); flex: none; padding: 0; }
+.rc-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rc-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.rc-acts label { cursor: pointer; }
+.lightbox { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,.88); display: grid; place-items: center; padding: 16px; }
+.lightbox img { max-width: 100%; max-height: 100%; border-radius: 12px; }
+.rc-acts .btn-line, .rc-add { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; white-space: nowrap; width: auto; }

@@ -145,3 +145,21 @@ export function loadDemo() {
   S.snaps = [{ asset_id: 's1', date: months[3] + '-01', value: 3600000 }, { asset_id: 's1', date: months[4] + '-01', value: 3900000 }, { asset_id: 's1', date: months[5] + '-01', value: 4280000 },
     { asset_id: 's2', date: months[3] + '-01', value: 24000 }, { asset_id: 's2', date: months[4] + '-01', value: 17000 }, { asset_id: 's2', date: months[5] + '-01', value: 51000 }];
 }
+
+// Receipt photos (private bucket v2-receipts, path <user id>/<file>.jpg). Signed URLs are cached briefly.
+const RECEIPTS = 'v2-receipts', urlCache = new Map();
+export async function uploadReceipt(blob) {
+  if (S.demo || !S.sb || !S.user) throw new Error('demo');
+  const path = S.user.id + '/' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + '.jpg';
+  const { error } = await S.sb.storage.from(RECEIPTS).upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+  if (error) throw error;
+  return path;
+}
+export async function receiptUrl(path) {
+  if (!path || S.demo || !S.sb) return null;
+  const c = urlCache.get(path); if (c && c.until > Date.now()) return c.url;
+  const { data, error } = await S.sb.storage.from(RECEIPTS).createSignedUrl(path, 3600);
+  if (error || !data) return null;
+  urlCache.set(path, { url: data.signedUrl, until: Date.now() + 50 * 60 * 1000 });
+  return data.signedUrl;
+}

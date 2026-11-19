@@ -94,3 +94,18 @@ export function imageToB64(file, max = 1600) {
     im.src = url;
   });
 }
+
+// Smaller JPEG for keeping the receipt itself (about 100–200KB).
+export function imageToBlob(file, max = 1200, q = 0.72) {
+  return new Promise((ok, bad) => {
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, max / Math.max(im.width, im.height)), c = document.createElement('canvas');
+      c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+      const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); c.toBlob(b => b ? ok(b) : bad(new Error('image')), 'image/jpeg', q);
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); bad(new Error('image')); };
+    im.src = url;
+  });
+}
