@@ -233,13 +233,13 @@ function listView() {
   const head = adv ? '<span class="strong">상세 검색 결과 <span class="small muted">' + list.length + '건</span></span><span class="acts-h"><button class="btn-ghost" data-advopen>조건 바꾸기</button><button class="btn-ghost" data-advoff>' + icon('x') + '해제</button></span>'
     : q ? '<span class="strong">검색 결과 <span class="small muted">전체 기간 · ' + list.length + '건</span></span><button class="btn-ghost" data-advopen>' + icon('search') + '상세 검색</button>'
     : mstep('lm', m, ym(todayStr())) + '<button class="btn-ghost" data-advopen>' + icon('search') + '상세 검색</button>';
-  return '<section class="card s12"><div class="card-h">' + head + '</div>' +
+  return '<section class="card s12"><div class="lv" data-live="a"><div class="card-h">' + head + '</div>' +
       (adv ? '<div class="small muted">' + esc(advSummary(adv)) + '</div>' : '') +
       '<div class="stats four"><div><span class="small muted">거래</span><span class="v">' + list.length + '건</span></div><div><span class="small muted">들어온 돈</span><span class="v up">+' + won(s.inc) + '</span></div><div><span class="small muted">나간 돈</span><span class="v down">−' + won(s.exp) + '</span></div><div><span class="small muted">남은 돈</span><span class="v">' + signed(s.inc - s.exp) + '</span></div></div>' +
-      (isMobile() && !adv ? '<label class="search m">' + icon('search') + '<input id="q" type="search" placeholder="내용·거래처·메모·분류로 찾기" value="' + esc(V.q) + '" autocomplete="off"></label>' : '') +
-      '<div class="pills scroll"><button class="pill" data-kind="all" aria-pressed="' + (V.kind === 'all') + '">전체</button><button class="pill kin" data-kind="income" aria-pressed="' + (V.kind === 'income') + '">들어온 돈</button><button class="pill kout" data-kind="expense" aria-pressed="' + (V.kind === 'expense') + '">나간 돈</button>' +
+      '</div>' + (isMobile() && !adv ? '<label class="search m">' + icon('search') + '<input id="q" type="search" placeholder="내용·거래처·메모·분류로 찾기" value="' + esc(V.q) + '" autocomplete="off"></label>' : '') +
+      '<div class="lv" data-live="b"><div class="pills scroll"><button class="pill" data-kind="all" aria-pressed="' + (V.kind === 'all') + '">전체</button><button class="pill kin" data-kind="income" aria-pressed="' + (V.kind === 'income') + '">들어온 돈</button><button class="pill kout" data-kind="expense" aria-pressed="' + (V.kind === 'expense') + '">나간 돈</button>' +
         used.map(c => '<button class="pill" data-catf="' + c.id + '" aria-pressed="' + (V.catF === c.id) + '">' + icon(catIcon(c)) + esc(c.name) + '</button>').join('') + '</div>' +
-      '<div>' + (list.length ? ((adv || q) ? monthGroups(sortTx(list)) : dayGroups(list)) : '<div class="empty">' + (adv || q ? '찾는 거래가 없어요' : '이 달에는 거래가 없어요') + '</div>') + '</div></section>';
+      '<div>' + (list.length ? ((adv || q) ? monthGroups(sortTx(list)) : dayGroups(list)) : '<div class="empty">' + (adv || q ? '찾는 거래가 없어요' : '이 달에는 거래가 없어요') + '</div>') + '</div></div></section>';
 }
 function openAdv() {
   const a = Object.assign({ from: addMonths(ym(todayStr()), -2), to: ym(todayStr()), kind: 'all', min: null, max: null, cats: [], accts: [], text: '' }, V.adv || {});
@@ -393,9 +393,27 @@ let sheetHandlers = null;
 function sheet(title, html, handlers, cls) {
   layer.innerHTML = '<div class="backdrop" data-close></div><div class="sheet' + (cls ? ' ' + cls : '') + '" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="grab"></div><h3>' + esc(title) + '</h3>' + html + '</div>';
   sheetHandlers = handlers || {};
+  lockScroll(true);
   const f = layer.querySelector('[autofocus]'); if (f && !isMobile()) setTimeout(() => f.focus(), 30);
 }
-const closeSheet = () => { layer.innerHTML = ''; sheetHandlers = null; };
+// Keep the page behind a sheet from moving (iOS scrolls the body when an input in a sheet gets focus).
+let lockY = null;
+function lockScroll(on) {
+  const bd = document.body;
+  if (on && lockY === null) { lockY = window.scrollY; bd.style.position = 'fixed'; bd.style.top = -lockY + 'px'; bd.style.left = '0'; bd.style.right = '0'; bd.style.width = '100%'; }
+  else if (!on && lockY !== null) { bd.style.position = bd.style.top = bd.style.left = bd.style.right = bd.style.width = ''; window.scrollTo(0, lockY); lockY = null; }
+}
+const closeSheet = () => { layer.innerHTML = ''; sheetHandlers = null; lockScroll(false); };
+// Re-draw a sheet's content but leave one live element (e.g. the input being typed in) untouched,
+// so Korean IME composition isn't broken by replacing the node.
+function patchAround(sel, html) {
+  const live = layer.querySelector('.sheet ' + sel); if (!live) return false;
+  const t = document.createElement('div'); t.innerHTML = html; const nw = t.querySelector(sel); if (!nw) return false;
+  const sh = live.parentNode; let n;
+  while ((n = live.nextSibling)) sh.removeChild(n);
+  let x = nw.nextSibling; while (x) { const nx = x.nextSibling; sh.appendChild(x); x = nx; }
+  return true;
+}
 layer.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) { closeSheet(); return; }
   if (sheetHandlers && sheetHandlers.click) sheetHandlers.click(e);
@@ -438,6 +456,7 @@ function openTx(t, copy) {
       '</div></div>' +
       (isNew ? '<button class="save" data-tsave>저장</button>' : '<div class="acts3"><button class="btn-line danger" data-tdel>삭제</button><button class="btn-line" data-tcopy>복사</button><button class="save" data-tsave>저장</button></div>'));
     const keep = document.activeElement && document.activeElement.id, pos = keep && document.activeElement.selectionStart;
+    if (keep === 'aiIn' && patchAround('.ai-box', html)) return;
     sheet(isNew ? (copy ? '복사해서 추가' : '거래 추가') : '거래 고치기', html, handlers, 'wide');
     if (keep) { const el = document.getElementById(keep); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) {} } }
   };
@@ -785,8 +804,19 @@ function chartTip(e) {
 }
 app.addEventListener('mousemove', chartTip);
 app.addEventListener('mouseleave', () => chartFocus(null));
+function searchUpdate(id) {
+  const v = document.getElementById('view');
+  if (!v || document.activeElement !== document.getElementById(id)) { render(); return; }
+  if (id === 'qtop') {
+    v.innerHTML = { home: homeView, list: listView, assets: assetsView, alerts: alertsView, settings: settingsView }[V.view]();
+    document.querySelectorAll('.nav [data-go], .tabbar [data-go]').forEach(b => { if (b.dataset.go === V.view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+    return;
+  }
+  const t = document.createElement('div'); t.innerHTML = listView();
+  v.querySelectorAll('[data-live]').forEach(n => { const m = t.querySelector('[data-live="' + n.dataset.live + '"]'); if (m) n.innerHTML = m.innerHTML; });
+}
 app.addEventListener('input', e => {
-  if (e.target.id === 'q' || e.target.id === 'qtop') { V.q = e.target.value; V.adv = null; if (V.q && V.view !== 'list') V.view = 'list'; render(); }
+  if (e.target.id === 'q' || e.target.id === 'qtop') { V.q = e.target.value; V.adv = null; if (V.q && V.view !== 'list') V.view = 'list'; searchUpdate(e.target.id); }
 });
 app.addEventListener('change', async e => {
   if (e.target.id === 'bkName') { const v = e.target.value.trim(); if (!v || v === book().name) return; const old = Object.assign({}, book()); await safe(put('v2_books', Object.assign({}, book(), { name: v }))); render(); toast('장부 이름을 바꿨어요', () => put('v2_books', old)); }
