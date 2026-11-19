@@ -41,7 +41,7 @@ svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-widt
 [hidden] { display: none !important; }
 
 /* ---------- Shell ---------- */
-.shell { display: grid; grid-template-columns: 268px minmax(0, 1fr); min-height: 100vh; }
+.shell { display: grid; grid-template-columns: 268px minmax(0, 1232px); justify-content: center; min-height: 100vh; padding: 0 24px; }
 .side { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 22px; padding: 24px 16px; border-right: 1px solid var(--line); overflow-y: auto; }
 .brand { display: flex; align-items: center; gap: 12px; padding: 4px 10px; }
 .brand .mark { width: 44px; height: 44px; border-radius: 14px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; flex: none; box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 30%, transparent); }
@@ -63,8 +63,8 @@ svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-widt
 .nav button[aria-current="page"] svg.i { color: var(--in); }
 .side .foot { margin-top: auto; padding: 0 8px; }
 
-.main { min-width: 0; padding: 0 32px 64px; }
-.topbar, .view { max-width: 1200px; margin-left: auto; margin-right: auto; }
+.main { min-width: 0; padding: 0 0 64px 32px; }
+.topbar, .view { max-width: 1200px; }
 .topbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px; padding: 20px 0 16px; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 .topbar .title { font-weight: 700; margin-right: auto; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .topbar .title > span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -227,7 +227,7 @@ button.tx:hover { background: var(--soft); }
 
 /* ---------- Mobile ---------- */
 @media (max-width: 959px) {
-  .shell { display: block; }
+  .shell { display: block; padding: 0; }
   .side, .topbar { display: none; }
   .main { padding: 0 16px calc(110px + env(safe-area-inset-bottom, 0px)); }
   .mhead { display: flex; position: sticky; top: 0; z-index: 10; align-items: center; justify-content: space-between; gap: 8px; margin: 0 -16px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
@@ -310,3 +310,14 @@ button.tx:hover { background: var(--soft); }
 .crow b { font-weight: 600; }
 .crow .small { width: 40px; text-align: right; }
 @media (max-width: 959px) { .comp { grid-template-columns: minmax(0, 1fr); justify-items: center; } .clist { width: 100%; } }
+/* income / expense row tint */
+.tx.r-in { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.tx.r-out { background: color-mix(in srgb, var(--coral) 5%, transparent); }
+button.tx.r-in:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+button.tx.r-out:hover { background: color-mix(in srgb, var(--coral) 10%, transparent); }
+.tx.r-in, .tx.r-out { padding-left: 10px; padding-right: 10px; }
+/* detailed search */
+.btn-ghost.tall { min-height: 42px; border-radius: 12px; }
+.acts-h { display: flex; gap: 8px; }
+.mband { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-top: 18px; border-radius: 12px; background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.seg.three { grid-template-columns: repeat(3, 1fr); }

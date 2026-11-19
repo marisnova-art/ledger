@@ -2,7 +2,7 @@
 import { CONFIG } from './config.js';
 import { S, initClient, signIn, signOut, loadAll, loadDemo, put, putMany, remove, putSnap, restoreTx, purgeTx, restoreItem, purgeItem } from './store.js';
 import { icon, esc, won, signed, man, uid, todayStr, nowTime, ym, addMonths, monthLabel, weekday, shortDate, iconForName, acctIcon, acctLabel, ACCT_TYPES } from './util.js';
-import { cur, book, bookTx, cats, accts, recs, assets, catOf, acctOf, monthSum, monthTx, series, score, outlook, recThisMonth, dueDate, computeAlerts, dismiss, markSeen, ASSET_TYPES, assetLabel, assetIcon, signedVal, netWorthAt } from './calc.js';
+import { cur, book, bookTx, sumOf, cats, accts, recs, assets, catOf, acctOf, monthSum, monthTx, series, score, outlook, recThisMonth, dueDate, computeAlerts, dismiss, markSeen, ASSET_TYPES, assetLabel, assetIcon, signedVal, netWorthAt } from './calc.js';
 import { parseLine } from './ai.js';
 
 const app = document.getElementById('app');
@@ -25,7 +25,7 @@ const KIND = { personal: '개인', business: '개인사업자', corp: '법인' }
 function txRow(t, opts = {}) {
   const c = catOf(t.category_id), a = acctOf(t.account_id), inc = t.type === 'income';
   const sub = [c ? c.name : '분류 없음', a ? a.name : '', opts.date ? shortDate(t.date) + ' ' + weekday(t.date) : '', t.time || ''].filter(Boolean).join(' · ');
-  return '<button class="tx" data-tx="' + t.id + '"><span class="ic ' + (inc ? 'inc' : 'exp') + '">' + icon(catIcon(c)) + '</span><span class="mid"><div>' + esc(t.description || t.vendor || (c && c.name) || '거래') + (t.recurring_id ? '<span class="rec">' + icon('repeat') + '반복</span>' : '') + '</div><div class="small muted">' + esc(sub) + '</div></span><span class="amt ' + (inc ? 'up' : 'down') + '">' + (inc ? '+' : '−') + won(t.amount) + '</span></button>';
+  return '<button class="tx ' + (inc ? 'r-in' : 'r-out') + '" data-tx="' + t.id + '"><span class="ic ' + (inc ? 'inc' : 'exp') + '">' + icon(catIcon(c)) + '</span><span class="mid"><div>' + esc(t.description || t.vendor || (c && c.name) || '거래') + (t.recurring_id ? '<span class="rec">' + icon('repeat') + '반복</span>' : '') + '</div><div class="small muted">' + esc(sub) + '</div></span><span class="amt ' + (inc ? 'up' : 'down') + '">' + (inc ? '+' : '−') + won(t.amount) + '</span></button>';
 }
 function dayGroups(list) {
   const g = {}; list.forEach(t => { (g[t.date] = g[t.date] || []).push(t); });
@@ -136,21 +136,90 @@ function homeView() {
       '<div class="stats cstats" style="margin-top:0">' + chartStats('월평균 ', avgI, avgE) + '</div></section>';
 }
 
+function advFilter(list, a) {
+  return list.filter(t => {
+    const m = t.date.slice(0, 7), v = Number(t.amount);
+    if (a.from && m < a.from) return false;
+    if (a.to && m > a.to) return false;
+    if (a.kind && a.kind !== 'all' && t.type !== a.kind) return false;
+    if (a.min && v < a.min) return false;
+    if (a.max && v > a.max) return false;
+    if (a.cats && a.cats.length && !a.cats.includes(t.category_id)) return false;
+    if (a.accts && a.accts.length && !a.accts.includes(t.account_id)) return false;
+    if (a.text) { const q = a.text.toLowerCase(); if (![t.description, t.vendor, t.memo].join(' ').toLowerCase().includes(q)) return false; }
+    return true;
+  });
+}
+function advSummary(a) {
+  const p = [];
+  p.push((a.from ? a.from.replace('-', '.') : '처음') + ' ~ ' + (a.to ? a.to.replace('-', '.') : '지금'));
+  if (a.kind && a.kind !== 'all') p.push(a.kind === 'income' ? '들어온 돈' : '나간 돈');
+  if (a.min || a.max) p.push((a.min ? won(a.min) : '') + ' ~ ' + (a.max ? won(a.max) : ''));
+  if (a.cats && a.cats.length) p.push(a.cats.map(id => (catOf(id) || {}).name).filter(Boolean).join(', '));
+  if (a.accts && a.accts.length) p.push(a.accts.map(id => (acctOf(id) || {}).name).filter(Boolean).join(', '));
+  if (a.text) p.push('"' + a.text + '"');
+  return p.join(' · ');
+}
+function monthGroups(list) {
+  const g = {}; list.forEach(t => { (g[t.date.slice(0, 7)] = g[t.date.slice(0, 7)] || []).push(t); });
+  return Object.keys(g).sort().reverse().map(m => {
+    const s = g[m].reduce((x, t) => { if (t.type === 'income') x.i += +t.amount; else if (t.type === 'expense') x.e += +t.amount; return x; }, { i: 0, e: 0 });
+    return '<div class="mband"><span class="strong">' + m.slice(0, 4) + '년 ' + monthLabel(m) + '</span><span class="muted">' + g[m].length + '건</span><span class="sp"></span><span class="up">+' + won(s.i) + '</span><span class="down">−' + won(s.e) + '</span><span class="strong">' + signed(s.i - s.e) + '</span></div>' + dayGroups(g[m]);
+  }).join('');
+}
 function listView() {
-  const q = V.q.trim().toLowerCase(), m = V.lm;
+  const q = V.q.trim().toLowerCase(), m = V.lm, adv = V.adv;
   let list = bookTx();
-  if (q) list = list.filter(t => [t.description, t.vendor, t.memo, (catOf(t.category_id) || {}).name].join(' ').toLowerCase().includes(q));
+  if (adv) list = advFilter(list, adv);
+  else if (q) list = list.filter(t => [t.description, t.vendor, t.memo, (catOf(t.category_id) || {}).name].join(' ').toLowerCase().includes(q));
   else list = list.filter(t => t.date.startsWith(m));
   const base = list;
   if (V.kind !== 'all') list = list.filter(t => t.type === V.kind);
   if (V.catF) list = list.filter(t => t.category_id === V.catF);
-  const s = monthSum(m), used = [...new Set(base.map(t => t.category_id))].map(catOf).filter(Boolean);
-  return '<section class="card s12"><div class="card-h">' + (q ? '<span class="strong">검색 결과 <span class="small muted">전체 기간 · ' + list.length + '건</span></span>' : mstep('lm', m, ym(todayStr()))) + '</div>' +
-      (q ? '' : '<div class="stats four"><div><span class="small muted">거래</span><span class="v">' + monthTx(m).length + '건</span></div><div><span class="small muted">들어온 돈</span><span class="v up">+' + won(s.inc) + '</span></div><div><span class="small muted">나간 돈</span><span class="v down">−' + won(s.exp) + '</span></div><div><span class="small muted">남은 돈</span><span class="v">' + signed(s.inc - s.exp) + '</span></div></div>') +
-      (isMobile() ? '<label class="search m">' + icon('search') + '<input id="q" type="search" placeholder="내용·거래처·메모·분류로 찾기" value="' + esc(V.q) + '" autocomplete="off"></label>' : '') +
+  const s = sumOf(list), used = [...new Set(base.map(t => t.category_id))].map(catOf).filter(Boolean);
+  const head = adv ? '<span class="strong">상세 검색 결과 <span class="small muted">' + list.length + '건</span></span><span class="acts-h"><button class="btn-ghost" data-advopen>조건 바꾸기</button><button class="btn-ghost" data-advoff>' + icon('x') + '해제</button></span>'
+    : q ? '<span class="strong">검색 결과 <span class="small muted">전체 기간 · ' + list.length + '건</span></span><button class="btn-ghost" data-advopen>' + icon('search') + '상세 검색</button>'
+    : mstep('lm', m, ym(todayStr())) + '<button class="btn-ghost" data-advopen>' + icon('search') + '상세 검색</button>';
+  return '<section class="card s12"><div class="card-h">' + head + '</div>' +
+      (adv ? '<div class="small muted">' + esc(advSummary(adv)) + '</div>' : '') +
+      '<div class="stats four"><div><span class="small muted">거래</span><span class="v">' + list.length + '건</span></div><div><span class="small muted">들어온 돈</span><span class="v up">+' + won(s.inc) + '</span></div><div><span class="small muted">나간 돈</span><span class="v down">−' + won(s.exp) + '</span></div><div><span class="small muted">남은 돈</span><span class="v">' + signed(s.inc - s.exp) + '</span></div></div>' +
+      (isMobile() && !adv ? '<label class="search m">' + icon('search') + '<input id="q" type="search" placeholder="내용·거래처·메모·분류로 찾기" value="' + esc(V.q) + '" autocomplete="off"></label>' : '') +
       '<div class="pills scroll"><button class="pill" data-kind="all" aria-pressed="' + (V.kind === 'all') + '">전체</button><button class="pill kin" data-kind="income" aria-pressed="' + (V.kind === 'income') + '">들어온 돈</button><button class="pill kout" data-kind="expense" aria-pressed="' + (V.kind === 'expense') + '">나간 돈</button>' +
         used.map(c => '<button class="pill" data-catf="' + c.id + '" aria-pressed="' + (V.catF === c.id) + '">' + icon(catIcon(c)) + esc(c.name) + '</button>').join('') + '</div>' +
-      '<div>' + (list.length ? dayGroups(list) : '<div class="empty">' + (q ? '찾는 거래가 없어요' : '이 달에는 거래가 없어요') + '</div>') + '</div></section>';
+      '<div>' + (list.length ? ((adv || q) ? monthGroups(sortTx(list)) : dayGroups(list)) : '<div class="empty">' + (adv || q ? '찾는 거래가 없어요' : '이 달에는 거래가 없어요') + '</div>') + '</div></section>';
+}
+function openAdv() {
+  const a = Object.assign({ from: addMonths(ym(todayStr()), -2), to: ym(todayStr()), kind: 'all', min: null, max: null, cats: [], accts: [], text: '' }, V.adv || {});
+  a.cats = (a.cats || []).slice(); a.accts = (a.accts || []).slice();
+  const fmtW = v => v ? Number(v).toLocaleString('ko-KR') : '';
+  const num = id => Number((document.getElementById(id).value || '').replace(/[^0-9]/g, '')) || null;
+  const draw = () => sheet('상세 검색',
+    '<div class="tx2"><div class="col">' +
+      '<div class="grid2"><label class="field"><span>시작 월</span><input id="advFrom" type="month" value="' + (a.from || '') + '"></label><label class="field"><span>끝 월</span><input id="advTo" type="month" value="' + (a.to || '') + '" max="' + ym(todayStr()) + '"></label></div>' +
+      '<div class="chips">' + [['이번 달', 0], ['3개월', -2], ['6개월', -5], ['올해', 'y'], ['전체', 'all']].map(([l, k]) => '<button class="chip" data-advq="' + k + '">' + l + '</button>').join('') + '</div>' +
+      '<div class="seg three"><button data-advk="all" aria-pressed="' + (a.kind === 'all') + '">전체</button><button class="inc" data-advk="income" aria-pressed="' + (a.kind === 'income') + '">들어온 돈</button><button class="exp" data-advk="expense" aria-pressed="' + (a.kind === 'expense') + '">나간 돈</button></div>' +
+      '<div class="grid2"><label class="field"><span>최소 금액</span><input id="advMin" inputmode="numeric" data-won value="' + fmtW(a.min) + '" placeholder="0"></label><label class="field"><span>최대 금액</span><input id="advMax" inputmode="numeric" data-won value="' + fmtW(a.max) + '" placeholder="제한 없음"></label></div>' +
+      '<label class="field"><span>내용·거래처·메모</span><input id="advText" value="' + esc(a.text || '') + '" placeholder="예: 쿠팡"></label>' +
+    '</div><div class="col">' +
+      '<div class="field"><span>분류 (여러 개 고를 수 있어요)</span><div class="chips">' + cats().map(c => '<button class="chip" data-advc="' + c.id + '" aria-pressed="' + a.cats.includes(c.id) + '">' + icon(catIcon(c)) + esc(c.name) + '</button>').join('') + '</div></div>' +
+      '<div class="field"><span>계좌·카드</span><div class="chips">' + accts().map(x => '<button class="chip" data-adva="' + x.id + '" aria-pressed="' + a.accts.includes(x.id) + '">' + icon(acctIcon(x)) + esc(x.name) + '</button>').join('') + '</div></div>' +
+    '</div></div>' +
+    '<div class="acts"><button class="btn-line" data-advreset>조건 지우기</button><button class="save" data-advgo>검색</button></div>', handlers, 'wide');
+  const read = () => { a.from = document.getElementById('advFrom').value; a.to = document.getElementById('advTo').value; a.min = num('advMin'); a.max = num('advMax'); a.text = document.getElementById('advText').value.trim(); };
+  const handlers = {
+    input: e => { if (e.target.hasAttribute('data-won')) { const v = e.target.value.replace(/[^0-9]/g, ''); e.target.value = v ? Number(v).toLocaleString('ko-KR') : ''; } },
+    keydown: e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); layer.querySelector('[data-advgo]').click(); } },
+    click: e => {
+      const t = e.target, nowM = ym(todayStr());
+      const qk = t.closest('[data-advq]'); if (qk) { read(); const k = qk.dataset.advq; a.to = nowM; a.from = k === 'all' ? '' : k === 'y' ? nowM.slice(0, 4) + '-01' : addMonths(nowM, +k); draw(); return; }
+      const kk = t.closest('[data-advk]'); if (kk) { a.kind = kk.dataset.advk; pick('advk', kk); return; }
+      const cc = t.closest('[data-advc]'); if (cc) { const id = cc.dataset.advc, i = a.cats.indexOf(id); if (i >= 0) a.cats.splice(i, 1); else a.cats.push(id); cc.setAttribute('aria-pressed', i < 0); return; }
+      const aa = t.closest('[data-adva]'); if (aa) { const id = aa.dataset.adva, i = a.accts.indexOf(id); if (i >= 0) a.accts.splice(i, 1); else a.accts.push(id); aa.setAttribute('aria-pressed', i < 0); return; }
+      if (t.closest('[data-advreset]')) { Object.assign(a, { from: addMonths(nowM, -2), to: nowM, kind: 'all', min: null, max: null, cats: [], accts: [], text: '' }); draw(); return; }
+      if (t.closest('[data-advgo]')) { read(); V.adv = a; V.q = ''; V.kind = 'all'; V.catF = ''; V.view = 'list'; closeSheet(); render(); window.scrollTo(0, 0); }
+    }
+  };
+  draw();
 }
 
 function alertRow(a) {
@@ -231,7 +300,7 @@ function render() {
       '<div class="foot small muted">' + (S.demo ? '예시 데이터예요. 저장되지 않아요.' : '') + '</div></aside>' +
     '<div class="main"><div class="topbar"><div class="title"><span>' + esc(b.name) + '</span><span class="tag">' + KIND[b.kind] + '</span></div>' +
       '<label class="search">' + icon('search') + '<input id="qtop" type="text" placeholder="내용·거래처·메모 빠른 검색" value="' + esc(V.q) + '" autocomplete="off">' + (V.q ? '<button class="x" data-qclear aria-label="검색어 지우기">' + icon('x') + '</button>' : '') + '</label>' +
-      '<button class="btn-add" data-add>' + icon('plus') + '거래 추가</button></div>' +
+      '<button class="btn-ghost tall" data-advopen>상세 검색</button><button class="btn-add" data-add>' + icon('plus') + '거래 추가</button></div>' +
       '<div class="mhead"><button class="bookbtn" data-bookmenu><span class="bdot">' + bookIconHtml(b) + '</span><span>' + esc(b.name) + '</span>' + icon('chev') + '</button><button class="icon-btn" data-msearch aria-label="검색">' + icon('search') + '</button></div>' +
       '<main class="view" id="view">' + body + '</main></div>' +
     '<nav class="tabbar" aria-label="메뉴"><div class="inner">' + [['home', 'home', '홈'], ['list', 'list', '내역']].map(n => '<button class="tab" data-go="' + n[0] + '"' + (V.view === n[0] || (n[0] === 'home' && V.view === 'assets') ? ' aria-current="page"' : '') + '>' + icon(n[1]) + n[2] + '</button>').join('') +
@@ -599,6 +668,8 @@ app.addEventListener('click', async e => {
   if ((x = el('[data-book]'))) { cur.bookId = x.dataset.book; V.catF = ''; render(); return; }
   if (el('[data-bookmenu]')) { openBookMenu(); return; }
   if (el('[data-msearch]')) { V.view = 'list'; render(); const q = document.getElementById('q'); if (q) q.focus(); return; }
+  if (el('[data-advopen]')) { openAdv(); return; }
+  if (el('[data-advoff]')) { V.adv = null; render(); return; }
   if (el('[data-qclear]')) { V.q = ''; render(); return; }
   if (el('[data-totop]')) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (el('[data-more]')) { V.showN += 10; render(); return; }
@@ -660,7 +731,7 @@ function chartTip(e) {
 app.addEventListener('mousemove', chartTip);
 app.addEventListener('mouseleave', () => chartFocus(null));
 app.addEventListener('input', e => {
-  if (e.target.id === 'q' || e.target.id === 'qtop') { V.q = e.target.value; if (V.q && V.view !== 'list') V.view = 'list'; render(); }
+  if (e.target.id === 'q' || e.target.id === 'qtop') { V.q = e.target.value; V.adv = null; if (V.q && V.view !== 'list') V.view = 'list'; render(); }
 });
 app.addEventListener('change', async e => {
   if (e.target.id === 'bkName') { const v = e.target.value.trim(); if (!v || v === book().name) return; const old = Object.assign({}, book()); await safe(put('v2_books', Object.assign({}, book(), { name: v }))); render(); toast('장부 이름을 바꿨어요', () => put('v2_books', old)); }
