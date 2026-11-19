@@ -2,10 +2,10 @@
 export const CONFIG = {
   BRAND: 'LEDGER',
   // App version shown on the intro screen and in Settings. Bump together with VERSION in sw.js on every push.
-  VERSION: '2.0.27',
+  VERSION: '2.0.28',
   // Testing aid: show the version on the intro screen. Set to false at launch (Settings keeps showing it).
   SHOW_VERSION_ON_INTRO: true,
-  BUILT: '2026-11-19 17:31',
+  BUILT: '2026-11-19 17:40',
   SUPABASE_URL: 'https://wpakjtlyfxwnrsuxkyjv.supabase.co',
   // Publishable (public) key. Data is protected by sign-in and row-level security, not by hiding this key.
   SUPABASE_KEY: 'sb_publishable_kw1ZI6jTAnvQqKGUUYIZVA_v7jRZjfl',

@@ -157,7 +157,14 @@ export function assetValueAt(a, m) {
   const s = S.snaps.filter(x => x.asset_id === a.id && x.date <= end).sort((x, y) => x.date.localeCompare(y.date)).pop();
   return s ? (a.type === 'loan' ? -1 : 1) * Number(s.value) : 0;
 }
-export const netWorthAt = m => assets().reduce((x, a) => x + assetValueAt(a, m), 0);
+// Account/cash balances at the end of month m (today for the current month).
+export function balancesAt(m) {
+  const t0 = m < ym(todayStr()) ? m + '-31' : todayStr(), bal = {}; accts().forEach(a => { bal[a.id] = Number(a.initial_balance || 0); });
+  bookTx().forEach(t => { if (t.date > t0) return; const v = Number(t.amount); if (t.type === 'income') { if (t.account_id in bal) bal[t.account_id] += v; } else if (t.type === 'expense') { if (t.account_id in bal) bal[t.account_id] -= v; } else { if (t.account_id in bal) bal[t.account_id] -= v; if (t.to_account_id in bal) bal[t.to_account_id] += v; } });
+  return { bal, tot: accts().reduce((x, a) => x + bal[a.id], 0) };
+}
+// Net worth = account/cash balances (linked automatically, never typed twice) + assets − loans.
+export const netWorthAt = m => assets().reduce((x, a) => x + assetValueAt(a, m), 0) + balancesAt(m).tot;
 
 // Label for the current book type (see terms.js).
 export const T = k => termsFor((book() || {}).kind)[k];

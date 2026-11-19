@@ -141,7 +141,7 @@ export function loadDemo() {
     if (i % 2) S.txs.push(T(mm + '-20', '당근마켓 판매', 'c8', 'income', 30000 + i * 5000, { time: '19:00' }));
   });
   S.txs = S.txs.filter(x => x.date <= t);
-  S.assets = [{ id: 's1', book_id: B, name: '주거래 통장', type: 'deposit', value: 4280000, sort: 1 }, { id: 's2', book_id: B, name: '업비트', type: 'invest', value: 51000, cost: 104000, sort: 2 }];
+  S.assets = [{ id: 's1', book_id: B, name: '청년 적금', type: 'deposit', value: 4280000, sort: 1 }, { id: 's2', book_id: B, name: '업비트', type: 'invest', value: 51000, cost: 104000, sort: 2 }];
   S.snaps = [{ asset_id: 's1', date: months[3] + '-01', value: 3600000 }, { asset_id: 's1', date: months[4] + '-01', value: 3900000 }, { asset_id: 's1', date: months[5] + '-01', value: 4280000 },
     { asset_id: 's2', date: months[3] + '-01', value: 24000 }, { asset_id: 's2', date: months[4] + '-01', value: 17000 }, { asset_id: 's2', date: months[5] + '-01', value: 51000 }];
 }

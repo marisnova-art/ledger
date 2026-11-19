@@ -3,7 +3,7 @@ import { CONFIG } from './config.js';
 import { S, initClient, signIn, signOut, loadAll, loadDemo, put, putMany, remove, putSnap, restoreTx, purgeTx, restoreItem, purgeItem, uploadReceipt, receiptUrl } from './store.js';
 import { CI, CI_GROUPS } from './icons.js';
 import { icon, esc, suggestIcons, won, signed, man, uid, todayStr, nowTime, ym, addMonths, addDays, monthLabel, weekday, shortDate, iconForName, acctIcon, acctLabel, ACCT_TYPES } from './util.js';
-import { T, cur, book, bookTx, sumOf, cats, accts, mainAcct, recs, assets, catOf, acctOf, monthSum, monthTx, series, score, outlook, recThisMonth, dueDate, recDone, computeAlerts, dismiss, markSeen, ASSET_TYPES, assetLabel, assetIcon, signedVal, netWorthAt } from './calc.js';
+import { T, cur, book, bookTx, sumOf, cats, accts, mainAcct, recs, assets, catOf, acctOf, monthSum, monthTx, series, score, outlook, recThisMonth, dueDate, recDone, computeAlerts, dismiss, markSeen, ASSET_TYPES, assetLabel, assetIcon, signedVal, netWorthAt, balancesAt } from './calc.js';
 import { parseLine, aiParse, imageToB64, imageToBlob, aiInfo } from './ai.js';
 
 const app = document.getElementById('app');
@@ -86,9 +86,17 @@ function assetBar() {
   const col = i => 'color-mix(in srgb, var(--accent) ' + Math.round(OP[Math.min(i, 5)] * 100) + '%, var(--mixbase))';
   return '<div class="abar">' + groups.map((g, i) => '<span style="flex:' + g.sum + ';background:' + col(i) + '"></span>').join('') + '</div><div class="alegend small muted">' + groups.map((g, i) => '<span><i style="background:' + col(i) + '"></i>' + g.label + ' <b>' + Math.round(g.sum / gross * 100) + '%</b></span>').join('') + '</div>';
 }
+function homeAssetRows() {
+  const { bal } = balancesAt(ym(todayStr()));
+  const rows = accts().map(a => ({ v: bal[a.id], h: '<button class="row" data-acct="' + a.id + '"><span class="ic inc">' + icon(acctIcon(a)) + '</span><span class="mid"><div>' + esc(a.name) + '</div><div class="small muted">' + acctLabel(a.type) + '</div></span><span class="small strong' + (bal[a.id] < 0 ? ' down' : '') + '">' + won(bal[a.id]) + '</span></button>' }))
+    .concat(assets().map(a => ({ v: signedVal(a), h: '<button class="row" data-asset="' + a.id + '"><span class="ic ' + (a.type === 'loan' ? 'exp' : 'inc') + '">' + icon(assetIcon(a.type)) + '</span><span class="mid"><div>' + esc(a.name) + '</div><div class="small muted">' + assetLabel(a.type) + '</div></span><span class="small strong' + (a.type === 'loan' ? ' down' : '') + '">' + won(signedVal(a)) + '</span></button>' })));
+  return rows.sort((a, b) => Math.abs(b.v) - Math.abs(a.v)).slice(0, 5).map(r => r.h).join('');
+}
 function assetGroups() {
   const by = {}; assets().forEach(a => { (by[a.type] = by[a.type] || []).push(a); });
-  return Object.keys(by).map(k => ({ k, label: assetLabel(k), ic: assetIcon(k), list: by[k], sum: by[k].reduce((x, a) => x + signedVal(a), 0) })).sort((a, b) => b.sum - a.sum);
+  const g = Object.keys(by).map(k => ({ k, label: assetLabel(k), ic: assetIcon(k), list: by[k], sum: by[k].reduce((x, a) => x + signedVal(a), 0) }));
+  if (accts().length) { const { bal, tot } = balancesAt(ym(todayStr())); g.push({ k: 'acct', label: '계좌·현금', ic: 'bank', acct: true, bal, list: accts(), sum: tot }); }
+  return g.sort((a, b) => b.sum - a.sum);
 }
 
 /* ---------- views ---------- */
@@ -105,11 +113,6 @@ function compCard(m, type) {
     '<div class="clist">' + rows.map((r, i) => '<button class="crow" data-compcat="' + (r.c ? r.c.id : '') + '"><i style="background:' + col(i) + '"></i><span class="mid">' + esc(r.c ? r.c.name : '분류 없음') + '</span><b>' + won(r.v) + '</b><span class="small muted">' + Math.round(r.v / sum * 100) + '%</span></button>').join('') + '</div></div>';
 }
 
-function balancesAt(m) {
-  const t0 = m < ym(todayStr()) ? m + '-31' : todayStr(), bal = {}; accts().forEach(a => { bal[a.id] = Number(a.initial_balance || 0); });
-  bookTx().forEach(t => { if (t.date > t0) return; const v = Number(t.amount); if (t.type === 'income') { if (t.account_id in bal) bal[t.account_id] += v; } else if (t.type === 'expense') { if (t.account_id in bal) bal[t.account_id] -= v; } else { if (t.account_id in bal) bal[t.account_id] -= v; if (t.to_account_id in bal) bal[t.to_account_id] += v; } });
-  return { bal, tot: accts().reduce((x, a) => x + bal[a.id], 0) };
-}
 function heroAccts(m) {
   if (!accts().length) return '';
   const { bal } = balancesAt(m);
@@ -203,7 +206,7 @@ function homeView() {
     '<section class="card ' + col + ' m4"><div class="card-h"><span class="strong">이번 달 반복 거래 <span class="small muted">' + rt.filter(x => x.done).length + '/' + rt.length + ' 완료</span></span>' + '<button class="golink" data-go="settings">관리 ›</button></div>' +
       (rt.length ? rt.slice().sort((a, b) => (a.done - b.done) || a.due.localeCompare(b.due)).slice(0, 7).map(({ r, due, done }) => '<button class="row" data-rec="' + r.id + '"><span class="mid"><div>' + esc(r.name) + '</div><div class="small muted">' + shortDate(due) + ' · ' + (done ? '완료' : '예정') + '</div></span><span class="small strong ' + (r.type === 'income' ? 'up' : 'down') + '">' + won(r.amount) + '</span></button>').join('') : '<div class="empty small">등록된 반복 거래가 없어요</div>') + '</section>' +
     '<section class="card ' + col + ' m5"><div class="card-h"><span class="strong">알림 <span class="small muted">' + (alerts.length ? alerts.length + '건' : '') + '</span></span><button class="golink" data-go="alerts">전체 보기 ›</button></div>' + (alerts.length ? alerts.slice(0, 5).map(a => alertRow(a, true)).join('') : '<div class="empty small">지금은 알릴 게 없어요</div>') + '</section>' +
-    (isP ? '<section class="card s4 m6"><div class="card-h"><span class="strong">내 자산</span><button class="golink" data-go="assets">자산 보기 ›</button></div><div class="kv"><span class="muted">순자산</span><span class="strong">' + won(nw) + '</span></div><div class="kv small"><span class="muted">지난달보다</span><span class="' + (nwd >= 0 ? 'up' : 'down') + '">' + signed(nwd) + '</span></div>' + (assets().length ? assetBar() + '<div>' + assets().slice().sort((a, b) => Math.abs(signedVal(b)) - Math.abs(signedVal(a))).slice(0, 5).map(a => '<button class="row" data-asset="' + a.id + '"><span class="ic ' + (a.type === 'loan' ? 'exp' : 'inc') + '">' + icon(assetIcon(a.type)) + '</span><span class="mid"><div>' + esc(a.name) + '</div><div class="small muted">' + assetLabel(a.type) + '</div></span><span class="small strong' + (a.type === 'loan' ? ' down' : '') + '">' + won(signedVal(a)) + '</span></button>').join('') + '</div>' : '<div class="small muted">예금, 주식, 코인, 부동산, 대출을 적어 두면 순자산 추이를 보여드려요.</div>') + '</section>' : '') +
+    (isP ? '<section class="card s4 m6"><div class="card-h"><span class="strong">내 자산</span><button class="golink" data-go="assets">자산 보기 ›</button></div><div class="kv"><span class="muted">순자산</span><span class="strong">' + won(nw) + '</span></div><div class="kv small"><span class="muted">지난달보다</span><span class="' + (nwd >= 0 ? 'up' : 'down') + '">' + signed(nwd) + '</span></div>' + (assetGroups().length ? assetBar() + '<div>' + homeAssetRows() + '</div>' : '<div class="small muted">예금, 주식, 코인, 부동산, 대출을 적어 두면 순자산 추이를 보여드려요.</div>') + '</section>' : '') +
     '<section class="card s6 m7">' + compCard(m, 'expense') + '</section>' +
     '<section class="card s6 m8">' + compCard(m, 'income') + '</section>' +
     scoreCard(m) +
@@ -322,14 +325,15 @@ function alertsView() {
 
 function assetsView() {
   const nowM = ym(todayStr()), months = [-5, -4, -3, -2, -1, 0].map(k => addMonths(nowM, k)), vals = months.map(netWorthAt);
-  const nw = vals[5], d = nw - vals[4], gross = assets().filter(a => a.type !== 'loan').reduce((x, a) => x + Number(a.value || 0), 0), debt = assets().filter(a => a.type === 'loan').reduce((x, a) => x + Number(a.value || 0), 0);
+  const nw = vals[5], d = nw - vals[4], gross = assets().filter(a => a.type !== 'loan').reduce((x, a) => x + Number(a.value || 0), 0) + balancesAt(nowM).tot, debt = assets().filter(a => a.type === 'loan').reduce((x, a) => x + Number(a.value || 0), 0);
   const groups = assetGroups().map(g => '<div class="grp"><span class="strong">' + g.label + '</span><span class="muted">' + g.list.length + '개</span><span class="sp"></span><span class="strong' + (g.sum < 0 ? ' down' : '') + '">' + won(g.sum) + '</span></div>' +
-    g.list.map(a => '<button class="row" data-asset="' + a.id + '"><span class="ic ' + (a.type === 'loan' ? 'exp' : 'inc') + '">' + icon(g.ic) + '</span><span class="mid"><div>' + esc(a.name) + '</div><div class="small muted">' + assetSub(a) + '</div></span><span class="strong' + (a.type === 'loan' ? ' down' : '') + '">' + won(signedVal(a)) + '</span>' + icon('right') + '</button>').join('')).join('');
+    (g.acct ? g.list.map(a => '<button class="row" data-acct="' + a.id + '"><span class="ic inc">' + icon(acctIcon(a)) + '</span><span class="mid"><div>' + esc(a.name) + '</div><div class="small muted">' + acctLabel(a.type) + ' · 거래로 자동 계산</div></span><span class="strong' + (g.bal[a.id] < 0 ? ' down' : '') + '">' + won(g.bal[a.id]) + '</span>' + icon('right') + '</button>').join('') : '') +
+    (g.acct ? [] : g.list).map(a => '<button class="row" data-asset="' + a.id + '"><span class="ic ' + (a.type === 'loan' ? 'exp' : 'inc') + '">' + icon(g.ic) + '</span><span class="mid"><div>' + esc(a.name) + '</div><div class="small muted">' + assetSub(a) + '</div></span><span class="strong' + (a.type === 'loan' ? ' down' : '') + '">' + won(signedVal(a)) + '</span>' + icon('right') + '</button>').join('')).join('');
   return '<div class="m1 s12" style="display:contents"></div>' + (isMobile() ? '<div><button class="golink" data-go="home">‹ 홈</button></div>' : '') +
     '<section class="card hero s5"><div class="card-h"><span class="muted">순자산</span><span class="tag">' + monthLabel(nowM) + ' 기준</span></div><div class="num">' + won(nw) + '</div><div class="stats three"><div><span class="small muted">가진 자산</span><span class="v">' + man(gross) + '</span></div><div><span class="small muted">대출</span><span class="v">−' + man(debt) + '</span></div><div><span class="small muted">지난달보다</span><span class="v">' + signed(d) + '</span></div></div></section>' +
     '<section class="card chart s7"><div class="card-h"><span class="strong">순자산 추이</span><span class="small muted">최근 6개월 · 매달 말</span></div>' + areaChart(vals, months.map(monthLabel)) + '</section>' +
-    (assets().length ? '<section class="card s12"><div class="card-h"><span class="strong">자산 구성</span><span class="small muted">대출 제외</span></div>' + assetBar() + '</section>' : '') +
-    '<section class="card s12"><div class="card-h"><span class="strong">내 자산</span><span class="small muted">금액을 고치면 그날 기록으로 남아요</span></div>' + (groups || '<div class="empty">아직 적어 둔 자산이 없어요</div>') + '<button class="btn-dash" data-addasset>' + icon('plus') + '자산 추가</button><p class="small muted hint">투자 조언은 하지 않고, 적어 주신 금액으로 기록과 추이만 보여드려요.</p></section>';
+    (assetGroups().length ? '<section class="card s12"><div class="card-h"><span class="strong">자산 구성</span><span class="small muted">대출 제외</span></div>' + assetBar() + '</section>' : '') +
+    '<section class="card s12"><div class="card-h"><span class="strong">내 자산</span><span class="small muted">금액을 고치면 그날 기록으로 남아요</span></div>' + (groups || '<div class="empty">아직 적어 둔 자산이 없어요</div>') + (accts().length ? '<p class="small muted hint">계좌·현금은 거래 기록으로 잔액이 자동 계산돼요. 같은 통장을 자산에 또 적지 않아도 돼요.</p>' : '') + '<button class="btn-dash" data-addasset>' + icon('plus') + '자산 추가</button><p class="small muted hint">투자 조언은 하지 않고, 적어 주신 금액으로 기록과 추이만 보여드려요.</p></section>';
 }
 
 function settingsView() {
