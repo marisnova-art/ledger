@@ -403,11 +403,22 @@ const safe = p => Promise.resolve(p).catch(fail);
 const layer = document.getElementById('layer');
 let sheetHandlers = null;
 function sheet(title, html, handlers, cls) {
+  const prev = layer.querySelector('.sheet'), st = prev ? prev.scrollTop : 0, same = prev && prev.getAttribute('aria-label') === title;
   layer.innerHTML = '<div class="backdrop" data-close></div><div class="sheet' + (cls ? ' ' + cls : '') + '" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="grab"></div><h3>' + esc(title) + '</h3>' + html + '</div>';
   sheetHandlers = handlers || {};
   lockScroll(true);
+  const nw = layer.querySelector('.sheet'); if (same && nw) nw.scrollTop = st; // redraw keeps the scroll position
+  fitSheet();
   const f = layer.querySelector('[autofocus]'); if (f && !isMobile()) setTimeout(() => f.focus(), 30);
 }
+// Mobile: keep the bottom sheet inside the visible area when the keyboard opens (iOS shrinks the visual viewport).
+function fitSheet() {
+  const sh = layer.querySelector('.sheet'), vv = window.visualViewport; if (!sh) return;
+  if (!isMobile() || !vv) { sh.style.removeProperty('--vvh'); sh.style.removeProperty('--vvb'); return; }
+  sh.style.setProperty('--vvh', vv.height + 'px');
+  sh.style.setProperty('--vvb', Math.max(0, window.innerHeight - vv.height - vv.offsetTop) + 'px');
+}
+if (window.visualViewport) { visualViewport.addEventListener('resize', fitSheet); visualViewport.addEventListener('scroll', fitSheet); }
 // Keep the page behind a sheet from moving (iOS scrolls the body when an input in a sheet gets focus).
 let lockY = null;
 function lockScroll(on) {

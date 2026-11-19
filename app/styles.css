@@ -469,3 +469,9 @@ button.htile:active { transform: scale(.99); }
 :root[data-theme="light"] .card:not(.hero) { border: 1px solid rgba(40, 36, 20, .08); box-shadow: 0 1px 2px rgba(40, 36, 20, .04), 0 8px 24px rgba(40, 36, 20, .06); }
 :root[data-theme="light"] .side .book, :root[data-theme="light"] .hstrip .htile { border-color: rgba(40, 36, 20, .10); }
 @media (prefers-color-scheme: light) { :root[data-theme="system"] .card:not(.hero) { border: 1px solid rgba(40, 36, 20, .08); box-shadow: 0 1px 2px rgba(40, 36, 20, .04), 0 8px 24px rgba(40, 36, 20, .06); } }
+/* Sheets don't jump: PC dialogs are anchored near the top (no re-centering when content grows);
+   mobile sheets follow the visible area above the keyboard. */
+@media (min-width: 960px) { .sheet { top: 6vh; transform: translateX(-50%); max-height: 88vh; } }
+@media (max-width: 959px) {
+  .sheet { bottom: var(--vvb, 0px); max-height: calc(var(--vvh, 100vh) - 24px); transition: bottom .12s; }
+}
