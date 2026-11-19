@@ -41,7 +41,7 @@ export function parseLine(line, { cats, accts }) {
 // Real AI parse through /api/ai-parse (Cloudflare Workers AI). Returns items in the same shape as parseLine,
 // or null when AI is unavailable (demo, offline, no key, daily limit) so callers keep the local result.
 const aiCache = new Map();
-export const aiInfo = { model: '', why: '' }; // which model answered last (shown in the entry sheet)
+export const aiInfo = { model: '', why: '', err: '' }; // which model answered last (shown in the entry sheet)
 export function aiParse(text, { sb, cats, accts, now, image }) {
   text = (text || '').trim();
   if (!sb || (!image && text.length < 4)) return Promise.resolve(null);
@@ -49,11 +49,14 @@ export function aiParse(text, { sb, cats, accts, now, image }) {
   const catIds = new Set((cats || []).map(c => c.id)), acctIds = new Set((accts || []).map(a => a.id)), t = todayStr();
   const p = sb.auth.getSession().then(({ data: ses }) => {
     const tok = ses && ses.session && ses.session.access_token; if (!tok) return null;
-    return fetch('/api/ai-parse', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({
+    const ac = new AbortController(), to = setTimeout(() => ac.abort(), 45000);
+    aiInfo.err = '';
+    return fetch('/api/ai-parse', { method: 'POST', signal: ac.signal, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({
       text, today: t, now, image,
       categories: (cats || []).filter(c => !c.hidden).map(c => ({ id: c.id, name: c.name, type: c.type })),
       accounts: (accts || []).map(a => ({ id: a.id, name: a.name, type: a.type }))
-    }) }).then(r => r.ok ? r.json() : null);
+    }) }).then(async r => { clearTimeout(to); if (r.ok) return r.json(); let j = {}; try { j = await r.json(); } catch (e) {} aiInfo.err = 'http ' + r.status + (j.error ? ' ' + j.error : '') + (j.detail ? ' ' + j.detail : ''); return null; })
+      .catch(e => { clearTimeout(to); aiInfo.err = e && e.name === 'AbortError' ? '45초 안에 응답이 없어요' : '연결 실패'; return null; });
   }).then(data => {
     if (!data || !Array.isArray(data.items)) return null;
     aiInfo.model = String(data.model || ''); aiInfo.why = String(data.gemini || '');
@@ -67,6 +70,7 @@ export function aiParse(text, { sb, cats, accts, now, image }) {
       category_id: catIds.has(it.category_id) ? it.category_id : null,
       account_id: acctIds.has(it.account_id) ? it.account_id : null
     })).filter(it => it.amount > 0);
+    if (!items.length) aiInfo.err = '읽은 결과에 금액이 있는 거래가 없어요';
     return items.length ? items : null;
   }).catch(() => null);
   if (image) return p;

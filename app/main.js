@@ -478,15 +478,15 @@ function openTx(t, copy) {
   const d = t ? Object.assign({}, t) : { type: 'expense', amount: '', date: todayStr(), time: '', description: '', vendor: '', memo: '', category_id: null, account_id: (mainAcct() || {}).id || null };
   if (copy) { d.id = null; d.date = todayStr(); d.time = ''; d.recurring_id = null; }
   if (!d.category_id) { const c = cats(d.type).filter(x => !x.hidden)[0]; d.category_id = c ? c.id : null; }
-  let ai = '', aiRes = null, aiWait = '', aiTimer = 0, imgItems = null, imgBusy = false;
+  let ai = '', aiRes = null, aiWait = '', aiTimer = 0, imgItems = null, imgBusy = false, imgErr = '';
   const isDup = it => bookTx().some(x => x.date === it.date && x.type === it.type && Number(x.amount) === Number(it.amount));
   const readImage = async file => {
     if (!S.sb) { toast('체험 모드에서는 사진 읽기를 쓸 수 없어요. 로그인하면 쓸 수 있어요.'); return; }
-    imgBusy = true; imgItems = null; draw();
+    imgBusy = true; imgItems = null; imgErr = ''; draw();
     let items = null;
     try { const b64 = await imageToB64(file); items = await aiParse('', { sb: S.sb, cats: cats(), accts: accts(), now: nowTime(), image: b64 }); } catch (e) { items = null; }
     imgBusy = false;
-    if (!items) { toast('사진에서 거래를 찾지 못했어요. 다시 찍거나 직접 입력해 주세요.'); draw(); return; }
+    if (!items) { imgErr = '사진에서 거래를 찾지 못했어요' + (aiInfo.err ? ' (' + aiInfo.err + (aiInfo.why ? ' · Gemini: ' + aiInfo.why : '') + ')' : '') + '. 다시 찍거나 직접 입력해 주세요.'; draw(); return; }
     imgItems = items.map(it => {
       const dup = isDup(it);
       if (!it.category_id) { const g = parseLine([it.description, it.vendor, it.amount].join(' '), { cats: cats(), accts: accts() }); if (g && g.type === it.type) it.category_id = g.category_id; }
@@ -520,8 +520,9 @@ function openTx(t, copy) {
     const aiState = !ai || !S.sb ? '' : aiRes && aiRes.text === ai.trim() ? (aiName() ? 'AI(' + aiName() + ')' : 'AI') + '가 정리했어요' : aiWait === ai.trim() ? 'AI가 정리하는 중…' : '';
     const freq = (() => { const by = {}; bookTx().forEach(x => { const k = x.type + '|' + (x.description || ''); if (!x.description) return; (by[k] = by[k] || []).push(x); }); return Object.values(by).sort((a, b) => b.length - a.length).slice(0, 5).map(g => sortTx(g)[0]); })();
     const html = (isNew && !copy ? '<div class="ai-box"><span class="ai-tag">AI</span><input id="aiIn" placeholder="한 줄로 적기 · 예: 어제 저녁 쿠팡이츠 덮밥 23000" value="' + esc(ai) + '" autocomplete="off"' + (isMobile() ? '' : ' autofocus') + '><label class="ai-cam" aria-label="사진으로 입력" title="영수증·거래내역 사진으로 입력">' + icon('camera') + '<input type="file" accept="image/*" id="aiImg" hidden></label></div>' +
-        (imgBusy ? '<div class="small muted ai-state">AI가 사진을 읽는 중이에요…</div>' : '') +
-        (imgItems ? '<div class="small muted ai-state">' + (aiName() ? 'AI(' + aiName() + ')' : 'AI') + '가 사진에서 ' + imgItems.length + '건을 찾았어요. 저장할 거래를 확인해 주세요.</div><div>' + imgItems.map((it, i) => '<button class="tx imgrow" data-imgi="' + i + '" aria-pressed="' + it.on + '"><span class="ic ' + (it.type === 'income' ? 'inc' : 'exp') + '">' + icon(it.on ? 'check' : catIcon(catOf(it.category_id))) + '</span><span class="mid"><div>' + esc(it.description || it.vendor || '거래') + '</div><div class="small muted">' + esc([it.dup ? '이미 있는 거래 같아요' : '', (catOf(it.category_id) || {}).name || '분류 없음', it.vendor, shortDate(it.date) + ' ' + weekday(it.date), it.time].filter(Boolean).join(' · ')) + '</div></span><span class="amt ' + (it.type === 'income' ? 'up' : 'down') + '">' + (it.type === 'income' ? '+' : '−') + won(it.amount) + '</span></button>').join('') + '</div><div class="acts"><button class="btn-line" data-imgclear>취소</button><button class="save" data-imgsave>' + imgItems.filter(x => x.on).length + '건 저장</button></div>' : '') +
+        (imgBusy ? '<div class="small muted ai-state">AI가 사진을 읽는 중이에요… (10~20초 걸릴 수 있어요)</div>' : '') +
+        (imgErr ? '<div class="small ai-state down">' + esc(imgErr) + '</div>' : '') +
+        (imgItems ? '<div class="small muted ai-state">' + (aiName() ? 'AI(' + aiName() + ')' : 'AI') + '가 사진에서 ' + imgItems.length + '건을 찾았어요. ' + (imgItems.some(x => x.on) ? '저장할 거래를 확인해 주세요.' : '이미 있는 거래 같아서 뺐어요. 그래도 넣으려면 거래를 눌러 주세요.') + '</div><div>' + imgItems.map((it, i) => '<button class="tx imgrow" data-imgi="' + i + '" aria-pressed="' + it.on + '"><span class="ic ' + (it.type === 'income' ? 'inc' : 'exp') + '">' + icon(it.on ? 'check' : catIcon(catOf(it.category_id))) + '</span><span class="mid"><div>' + esc(it.description || it.vendor || '거래') + '</div><div class="small muted">' + esc([it.dup ? (it.on ? '이미 있는 거래 같아요' : '이미 있는 거래 같아서 뺐어요 · 눌러서 넣기') : '', (catOf(it.category_id) || {}).name || '분류 없음', it.vendor, shortDate(it.date) + ' ' + weekday(it.date), it.time].filter(Boolean).join(' · ')) + '</div></span><span class="amt ' + (it.type === 'income' ? 'up' : 'down') + '">' + (it.type === 'income' ? '+' : '−') + won(it.amount) + '</span></button>').join('') + '</div><div class="acts"><button class="btn-line" data-imgclear>취소</button><button class="save" data-imgsave' + (imgItems.some(x => x.on) ? '>' + imgItems.filter(x => x.on).length + '건 저장' : ' disabled>저장할 거래 없음') + '</button></div>' : '') +
         (ai ? (aiState ? '<div class="small muted ai-state">' + aiState + '</div>' : '') + (items.length ? '<div>' + items.map(it => '<div class="tx" style="cursor:default"><span class="ic ' + (it.type === 'income' ? 'inc' : 'exp') + '">' + icon(catIcon(catOf(it.category_id))) + '</span><span class="mid"><div>' + esc(it.description) + '</div><div class="small muted">' + esc([(catOf(it.category_id) || {}).name || '분류 없음', shortDate(it.date) + ' ' + weekday(it.date), it.time].join(' · ')) + '</div></span><span class="amt ' + (it.type === 'income' ? 'up' : 'down') + '">' + (it.type === 'income' ? '+' : '−') + won(it.amount) + '</span></div>').join('') + '</div><button class="save" data-aisave>' + (items.length > 1 ? items.length + '건 ' : '') + '저장 (Enter)</button>' : '<div class="small muted">금액을 찾지 못했어요. 숫자를 함께 적어 주세요.</div>') :
           (imgBusy || imgItems ? '' : freq.length ? '<div class="small muted">자주 하는 거래</div><div class="chips">' + freq.map(x => '<button class="chip" data-freq="' + x.id + '">' + esc(x.description) + ' ' + won(x.amount) + '</button>').join('') + '</div>' : '') + (imgBusy || imgItems ? '' : '<div class="or small muted">또는 직접 입력</div>')) : '') +
       (ai || imgBusy || imgItems ? '' :
@@ -564,7 +565,7 @@ function openTx(t, copy) {
       const fq = t2.closest('[data-freq]'); if (fq) { const x = S.txs.find(y => y.id === fq.dataset.freq); Object.assign(d, { type: x.type, amount: x.amount, description: x.description, vendor: x.vendor, category_id: x.category_id, account_id: x.account_id, date: todayStr(), time: '' }); ai = ''; draw(); const f = document.getElementById('fDate'); if (f) f.focus(); return; }
       if (t2.closest('[data-aisave]')) { saveAI(); return; }
       const ir = t2.closest('[data-imgi]'); if (ir) { const it = imgItems[+ir.dataset.imgi]; it.on = !it.on; draw(); return; }
-      if (t2.closest('[data-imgclear]')) { imgItems = null; draw(); return; }
+      if (t2.closest('[data-imgclear]')) { imgItems = null; imgErr = ''; draw(); return; }
       if (t2.closest('[data-imgsave]')) { const it = imgItems.filter(x => x.on); if (it.length) saveItems(it); return; }
       if (t2.closest('[data-tnewcat]')) { readForm(); openCat(null, d.type, cid => { d.category_id = cid; draw(); }); return; }
       if (t2.closest('[data-tnewacct]')) { readForm(); openAcct(null, aid => { d.account_id = aid; draw(); }); return; }
