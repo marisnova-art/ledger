@@ -25,7 +25,7 @@ async function gemini(env, system, text, img) {
       generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 2000 }
     })
   });
-  if (!r.ok) throw new Error('gemini ' + r.status);
+  if (!r.ok) { let m = ''; try { m = ((await r.json()).error || {}).status || ''; } catch {} throw new Error('http ' + r.status + (m ? ' ' + m : '') + ' · ' + model); }
   const d = await r.json();
   const t = ((d.candidates || [])[0] || {}).content;
   const txt = t && Array.isArray(t.parts) ? t.parts.map(p => p.text || '').join('') : '';
@@ -94,10 +94,10 @@ export async function onRequestPost({ request, env }) {
   ].join('\n');
 
   const prompt = text || '이 이미지의 거래를 정리해 주세요.';
-  let out = null, used = '';
+  let out = null, used = '', why = '';
   if (env.GEMINI_API_KEY) {
-    try { const g = await gemini(env, system, prompt, img); out = g.out; used = g.model; } catch (e) { out = null; } // quota (429) or error → Llama
-  }
+    try { const g = await gemini(env, system, prompt, img); out = g.out; used = g.model; } catch (e) { out = null; why = String(e && e.message || e).slice(0, 120); } // quota (429) or error → Llama
+  } else why = 'no_key';
   if (!out && env.AI) {
     const userContent = img
       ? [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + img } }]
@@ -117,7 +117,7 @@ export async function onRequestPost({ request, env }) {
     }
   }
   const items = out && Array.isArray(out.items) ? out.items : [];
-  return json(200, { items, model: used });
+  return json(200, { items, model: used, gemini: why });
 }
 
 export const onRequest = () => json(405, { error: 'method' });

@@ -516,7 +516,7 @@ function openTx(t, copy) {
   const draw = () => {
     const cl = cats(d.type).filter(c => !c.hidden || c.id === d.category_id);
     const items = ai ? curItems() : [];
-    const aiName = () => /gemini/i.test(aiInfo.model) ? 'Gemini' : aiInfo.model ? 'Llama' : '';
+    const aiName = () => /gemini/i.test(aiInfo.model) ? 'Gemini' : aiInfo.model ? 'Llama' + (aiInfo.why ? ' · Gemini 실패: ' + aiInfo.why : '') : '';
     const aiState = !ai || !S.sb ? '' : aiRes && aiRes.text === ai.trim() ? (aiName() ? 'AI(' + aiName() + ')' : 'AI') + '가 정리했어요' : aiWait === ai.trim() ? 'AI가 정리하는 중…' : '';
     const freq = (() => { const by = {}; bookTx().forEach(x => { const k = x.type + '|' + (x.description || ''); if (!x.description) return; (by[k] = by[k] || []).push(x); }); return Object.values(by).sort((a, b) => b.length - a.length).slice(0, 5).map(g => sortTx(g)[0]); })();
     const html = (isNew && !copy ? '<div class="ai-box"><span class="ai-tag">AI</span><input id="aiIn" placeholder="한 줄로 적기 · 예: 어제 저녁 쿠팡이츠 덮밥 23000" value="' + esc(ai) + '" autocomplete="off"' + (isMobile() ? '' : ' autofocus') + '><label class="ai-cam" aria-label="사진으로 입력" title="영수증·거래내역 사진으로 입력">' + icon('camera') + '<input type="file" accept="image/*" id="aiImg" hidden></label></div>' +
