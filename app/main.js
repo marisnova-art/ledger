@@ -162,7 +162,7 @@ function heroTiles(m) {
     const sum = out_.reduce((a, x) => a + Number(x.r.amount || 0), 0), sumI = in_.reduce((a, x) => a + Number(x.r.amount || 0), 0), nx = due[0];
     const sameDay = nx ? due.filter(x => x.d === nx.d) : [];
     const note = nx ? shortDate(nx.d) + ' ' + esc(nx.r.name) + (sameDay.length > 1 ? ' 외 ' + (sameDay.length - 1) + '건' : '') + (due.length > sameDay.length ? ' · 7일간 ' + due.length + '건' : '') : '앞으로 7일은 예정된 거래가 없어요';
-    out.push(tile('data-upcoming', 'calendar', '다가오는 일정', '7일', due.length ? (sum ? '−' + won(sum) : '') + (sumI ? (sum ? ' <span class="small up">+' + won(sumI) + '</span>' : '+' + won(sumI)) : '') : '없어요', note,
+    out.push(tile('data-upcoming', 'calendar', '다가오는 거래', '7일', due.length ? (sum ? '−' + won(sum) : '') + (sumI ? (sum ? ' <span class="small up">+' + won(sumI) + '</span>' : '+' + won(sumI)) : '') : '없어요', note,
       '<div class="hdays">' + days.map(d => { const n = due.filter(x => x.d === d), o = n.some(x => x.r.type === 'expense'); return '<span class="hd' + (n.length ? (o ? ' on' : ' inc') : '') + (d === t ? ' today' : '') + '"><em>' + weekday(d) + '</em>' + Number(d.slice(8)) + (n.length > 1 ? '<i class="hn">' + n.length + '</i>' : '') + '</span>'; }).join('') + '</div>'));
   } else {
     const a = daily(m).slice(0, dim), top = Math.max(1, ...a), mi = a.indexOf(Math.max(...a));
@@ -213,7 +213,7 @@ function openUpcoming() {
   const html = '<div class="rsum" style="margin:0 0 8px">' + '<div class="kv small"><span class="muted">7일 예정 · ' + T('out') + '</span><span class="down">−' + won(tot(list, 'expense')) + '</span></div>' + (tot(list, 'income') ? '<div class="kv small"><span class="muted">7일 예정 · ' + T('in') + '</span><span class="up">+' + won(tot(list, 'income')) + '</span></div>' : '') + '</div>' +
     (list.length ? byDay(list) : '<div class="empty small">앞으로 7일은 예정된 거래가 없어요</div>') +
     (later.length ? '<div class="card-h" style="margin-top:16px"><span class="strong">그 다음 30일</span></div>' + byDay(later) : '');
-  sheet('다가오는 일정', html, { click: e => { const b = e.target.closest('[data-uprec]'); if (b) { closeSheet(); recordRec(b.dataset.uprec, b.dataset.updue); } } });
+  sheet('다가오는 거래', html, { click: e => { const b = e.target.closest('[data-uprec]'); if (b) { closeSheet(); recordRec(b.dataset.uprec, b.dataset.updue); } } });
 }
 function homeView() {
   const m = V.month, now = monthSum(m), prev = monthSum(addMonths(m, -1)), net = now.inc - now.exp, diff = net - (prev.inc - prev.exp), sc = score(m);
