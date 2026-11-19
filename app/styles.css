@@ -412,3 +412,6 @@ button.tx.r-out:hover { background: color-mix(in srgb, var(--coral) 10%, transpa
   .tx .ic { width: 36px; height: 36px; }
   .hstrip { scroll-padding-left: 8px; }
 }
+/* No zoom on mobile: block double-tap zoom, and keep inputs at 16px so iOS doesn't zoom on focus */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@media (max-width: 959px) { input, select, textarea { font-size: 16px; } }

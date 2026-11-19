@@ -16,6 +16,8 @@ const applyTheme = () => {
 };
 applyTheme();
 matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
+// Block pinch zoom (iOS Safari ignores user-scalable=no).
+['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
 const isMobile = () => matchMedia('(max-width: 959px)').matches;
 
 /* ---------- small pieces ---------- */
