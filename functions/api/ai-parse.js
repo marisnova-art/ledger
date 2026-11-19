@@ -1,4 +1,6 @@
-// POST /api/ai-parse  — Cloudflare Pages Function using Workers AI (binding "AI").
+// POST /api/ai-parse  — Cloudflare Pages Function.
+// Tries Google Gemini first (free tier, key in the GEMINI_API_KEY secret); when it is missing, out of
+// quota or failing, falls back to Cloudflare Workers AI (binding "AI", Llama).
 // Turns a one-line note ("어제 저녁 쿠팡이츠 덮밥 23000") or a receipt / bank-app screenshot into
 // transactions. Signed-in users only; each call is counted against a daily limit in Supabase
 // (public.v2_ai_bump). The app falls back to its local rules whenever this returns an error.
@@ -7,11 +9,34 @@ const MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct'; // text + image, JSON m
 const SUPABASE_URL = 'https://wpakjtlyfxwnrsuxkyjv.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_kw1ZI6jTAnvQqKGUUYIZVA_v7jRZjfl'; // public key; RLS protects data
 const DAILY_LIMIT = 50;
+const GEMINI_DEFAULT = 'gemini-flash-latest';
+
+// Gemini REST call. Returns parsed {items} or throws (so the caller can fall back).
+async function gemini(env, system, text, img) {
+  const model = env.GEMINI_MODEL || GEMINI_DEFAULT;
+  const parts = [{ text }];
+  if (img) parts.push({ inline_data: { mime_type: 'image/jpeg', data: img } });
+  const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts }],
+      generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 2000 }
+    })
+  });
+  if (!r.ok) throw new Error('gemini ' + r.status);
+  const d = await r.json();
+  const t = ((d.candidates || [])[0] || {}).content;
+  const txt = t && Array.isArray(t.parts) ? t.parts.map(p => p.text || '').join('') : '';
+  const m = txt.match(/\{[\s\S]*\}/); if (!m) throw new Error('gemini empty');
+  return { out: JSON.parse(m[0]), model };
+}
 
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 
 export async function onRequestPost({ request, env }) {
-  if (!env.AI) return json(503, { error: 'no_ai_binding' });
+  if (!env.AI && !env.GEMINI_API_KEY) return json(503, { error: 'no_ai' });
   const auth = request.headers.get('Authorization') || '';
   if (!/^Bearer\s+\S+/.test(auth)) return json(401, { error: 'auth' });
 
@@ -68,25 +93,31 @@ export async function onRequestPost({ request, env }) {
     'User accounts: ' + JSON.stringify(accts)
   ].join('\n');
 
-  const userContent = img
-    ? [{ type: 'text', text: text || '이 이미지의 거래를 정리해 주세요.' }, { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + img } }]
-    : text;
-
-  let res;
-  try {
-    res = await env.AI.run(MODEL, {
-      messages: [{ role: 'system', content: system }, { role: 'user', content: userContent }],
-      response_format: { type: 'json_schema', json_schema: schema },
-      max_tokens: 2000,
-      temperature: 0.1
-    });
-  } catch (e) {
-    return json(502, { error: 'ai', detail: String(e && e.message || e).slice(0, 200) });
+  const prompt = text || '이 이미지의 거래를 정리해 주세요.';
+  let out = null, used = '';
+  if (env.GEMINI_API_KEY) {
+    try { const g = await gemini(env, system, prompt, img); out = g.out; used = g.model; } catch (e) { out = null; } // quota (429) or error → Llama
   }
-  let out = res && res.response;
-  if (typeof out === 'string') { const m = out.match(/\{[\s\S]*\}/); try { out = m ? JSON.parse(m[0]) : null; } catch { out = null; } }
+  if (!out && env.AI) {
+    const userContent = img
+      ? [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + img } }]
+      : prompt;
+    try {
+      const res = await env.AI.run(MODEL, {
+        messages: [{ role: 'system', content: system }, { role: 'user', content: userContent }],
+        response_format: { type: 'json_schema', json_schema: schema },
+        max_tokens: 2000,
+        temperature: 0.1
+      });
+      out = res && res.response;
+      if (typeof out === 'string') { const m = out.match(/\{[\s\S]*\}/); try { out = m ? JSON.parse(m[0]) : null; } catch { out = null; } }
+      used = MODEL;
+    } catch (e) {
+      return json(502, { error: 'ai', detail: String(e && e.message || e).slice(0, 200) });
+    }
+  }
   const items = out && Array.isArray(out.items) ? out.items : [];
-  return json(200, { items, model: MODEL });
+  return json(200, { items, model: used });
 }
 
 export const onRequest = () => json(405, { error: 'method' });
