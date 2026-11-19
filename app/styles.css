@@ -502,3 +502,4 @@ html, body { overscroll-behavior: none; }
 .igrp:first-of-type { margin-top: 2px; }
 .isug { min-height: 44px; align-items: center; }
 .isug > span { grid-column: 1 / -1; }
+.ai-state { margin: 2px 2px 6px; }

@@ -4,7 +4,7 @@ import { S, initClient, signIn, signOut, loadAll, loadDemo, put, putMany, remove
 import { CI, CI_GROUPS } from './icons.js';
 import { icon, esc, suggestIcons, won, signed, man, uid, todayStr, nowTime, ym, addMonths, addDays, monthLabel, weekday, shortDate, iconForName, acctIcon, acctLabel, ACCT_TYPES } from './util.js';
 import { cur, book, bookTx, sumOf, cats, accts, recs, assets, catOf, acctOf, monthSum, monthTx, series, score, outlook, recThisMonth, dueDate, recDone, computeAlerts, dismiss, markSeen, ASSET_TYPES, assetLabel, assetIcon, signedVal, netWorthAt } from './calc.js';
-import { parseLine } from './ai.js';
+import { parseLine, aiParse } from './ai.js';
 
 const app = document.getElementById('app');
 const V = { view: 'home', month: ym(todayStr()), lm: ym(todayStr()), q: '', kind: 'all', catF: '', showN: 10, alF: 'all', setKind: 'expense', bpick: false };
@@ -478,13 +478,33 @@ function openTx(t, copy) {
   const d = t ? Object.assign({}, t) : { type: 'expense', amount: '', date: todayStr(), time: '', description: '', vendor: '', memo: '', category_id: null, account_id: (accts()[0] || {}).id || null };
   if (copy) { d.id = null; d.date = todayStr(); d.time = ''; d.recurring_id = null; }
   if (!d.category_id) { const c = cats(d.type).filter(x => !x.hidden)[0]; d.category_id = c ? c.id : null; }
-  let ai = '';
+  let ai = '', aiRes = null, aiWait = '', aiTimer = 0;
+  const localItems = () => ai.split(/\n|;/).map(s => s.trim()).filter(Boolean).map(s => parseLine(s, { cats: cats(), accts: accts() })).filter(Boolean);
+  const curItems = () => (aiRes && aiRes.text === ai.trim() ? aiRes.items : localItems()).map(it => Object.assign({}, it, { category_id: it.category_id || (parseLine(it.description + ' ' + it.amount, { cats: cats(), accts: accts() }) || {}).category_id || null }));
+  const askAI = () => {
+    const text = ai.trim(); if (!S.sb || text.length < 4) return Promise.resolve(null);
+    aiWait = text;
+    return aiParse(text, { sb: S.sb, cats: cats(), accts: accts(), now: nowTime() }).then(items => {
+      if (aiWait === text) aiWait = '';
+      if (items) aiRes = { text, items };
+      if (ai.trim() === text && document.getElementById('aiIn')) draw();
+      return items;
+    });
+  };
+  let saving = false;
+  const saveAI = async () => {
+    if (saving) return; saving = true;
+    const text = ai.trim();
+    if (S.sb && !(aiRes && aiRes.text === text)) { clearTimeout(aiTimer); await Promise.race([askAI(), new Promise(r => setTimeout(r, 6000))]); }
+    const it = curItems(); if (it.length) saveItems(it); else saving = false;
+  };
   const draw = () => {
     const cl = cats(d.type).filter(c => !c.hidden || c.id === d.category_id);
-    const items = ai ? ai.split(/\n|;/).map(s => s.trim()).filter(Boolean).map(s => parseLine(s, { cats: cats(), accts: accts() })).filter(Boolean) : [];
+    const items = ai ? curItems() : [];
+    const aiState = !ai || !S.sb ? '' : aiRes && aiRes.text === ai.trim() ? 'AI가 정리했어요' : aiWait === ai.trim() ? 'AI가 정리하는 중…' : '';
     const freq = (() => { const by = {}; bookTx().forEach(x => { const k = x.type + '|' + (x.description || ''); if (!x.description) return; (by[k] = by[k] || []).push(x); }); return Object.values(by).sort((a, b) => b.length - a.length).slice(0, 5).map(g => sortTx(g)[0]); })();
     const html = (isNew && !copy ? '<div class="ai-box"><span class="ai-tag">AI</span><input id="aiIn" placeholder="한 줄로 적기 · 예: 어제 저녁 쿠팡이츠 덮밥 23000" value="' + esc(ai) + '" autocomplete="off"' + (isMobile() ? '' : ' autofocus') + '></div>' +
-        (ai ? (items.length ? '<div>' + items.map(it => '<div class="tx" style="cursor:default"><span class="ic ' + (it.type === 'income' ? 'inc' : 'exp') + '">' + icon(catIcon(catOf(it.category_id))) + '</span><span class="mid"><div>' + esc(it.description) + '</div><div class="small muted">' + esc([(catOf(it.category_id) || {}).name || '분류 없음', shortDate(it.date) + ' ' + weekday(it.date), it.time].join(' · ')) + '</div></span><span class="amt ' + (it.type === 'income' ? 'up' : 'down') + '">' + (it.type === 'income' ? '+' : '−') + won(it.amount) + '</span></div>').join('') + '</div><button class="save" data-aisave>' + (items.length > 1 ? items.length + '건 ' : '') + '저장 (Enter)</button>' : '<div class="small muted">금액을 찾지 못했어요. 숫자를 함께 적어 주세요.</div>') :
+        (ai ? (aiState ? '<div class="small muted ai-state">' + aiState + '</div>' : '') + (items.length ? '<div>' + items.map(it => '<div class="tx" style="cursor:default"><span class="ic ' + (it.type === 'income' ? 'inc' : 'exp') + '">' + icon(catIcon(catOf(it.category_id))) + '</span><span class="mid"><div>' + esc(it.description) + '</div><div class="small muted">' + esc([(catOf(it.category_id) || {}).name || '분류 없음', shortDate(it.date) + ' ' + weekday(it.date), it.time].join(' · ')) + '</div></span><span class="amt ' + (it.type === 'income' ? 'up' : 'down') + '">' + (it.type === 'income' ? '+' : '−') + won(it.amount) + '</span></div>').join('') + '</div><button class="save" data-aisave>' + (items.length > 1 ? items.length + '건 ' : '') + '저장 (Enter)</button>' : '<div class="small muted">금액을 찾지 못했어요. 숫자를 함께 적어 주세요.</div>') :
           (freq.length ? '<div class="small muted">자주 하는 거래</div><div class="chips">' + freq.map(x => '<button class="chip" data-freq="' + x.id + '">' + esc(x.description) + ' ' + won(x.amount) + '</button>').join('') + '</div>' : '') + '<div class="or small muted">또는 직접 입력</div>') : '') +
       (ai ? '' :
       '<div class="tx2"><div class="col">' +
@@ -515,15 +535,15 @@ function openTx(t, copy) {
     try { await putMany('v2_transactions', rows); toast(rows.length + '건 저장했어요', async () => { for (const r of rows) await remove('v2_transactions', r.id); }); render(); } catch (e) { fail(e); }
   };
   const handlers = {
-    input: e => { if (e.target.id === 'aiIn') { ai = e.target.value; draw(); } else if (e.target.id === 'fAmt') { const v = e.target.value.replace(/[^0-9]/g, ''); e.target.value = v ? Number(v).toLocaleString('ko-KR') : ''; } },
-    keydown: e => { if (e.target.id === 'aiIn' && e.key === 'Enter') { e.preventDefault(); const it = ai.split(/\n|;/).map(s => parseLine(s.trim(), { cats: cats(), accts: accts() })).filter(Boolean); if (it.length) saveItems(it); } },
+    input: e => { if (e.target.id === 'aiIn') { ai = e.target.value; clearTimeout(aiTimer); if (S.sb && ai.trim().length >= 4) aiTimer = setTimeout(askAI, 900); draw(); } else if (e.target.id === 'fAmt') { const v = e.target.value.replace(/[^0-9]/g, ''); e.target.value = v ? Number(v).toLocaleString('ko-KR') : ''; } },
+    keydown: e => { if (e.target.id === 'aiIn' && e.key === 'Enter' && !e.isComposing) { e.preventDefault(); saveAI(); } },
     click: async e => {
       const t2 = e.target;
       const k = t2.closest('[data-tkind]'); if (k) { readForm(); d.type = k.dataset.tkind; const c = cats(d.type).filter(x => !x.hidden)[0]; d.category_id = c ? c.id : null; draw(); return; }
       const c = t2.closest('[data-tcat]'); if (c) { d.category_id = c.dataset.tcat; pick('tcat', c); return; }
       const a = t2.closest('[data-tacct]'); if (a) { d.account_id = a.dataset.tacct; pick('tacct', a); return; }
       const fq = t2.closest('[data-freq]'); if (fq) { const x = S.txs.find(y => y.id === fq.dataset.freq); Object.assign(d, { type: x.type, amount: x.amount, description: x.description, vendor: x.vendor, category_id: x.category_id, account_id: x.account_id, date: todayStr(), time: '' }); ai = ''; draw(); const f = document.getElementById('fDate'); if (f) f.focus(); return; }
-      if (t2.closest('[data-aisave]')) { const it = ai.split(/\n|;/).map(s => parseLine(s.trim(), { cats: cats(), accts: accts() })).filter(Boolean); if (it.length) saveItems(it); return; }
+      if (t2.closest('[data-aisave]')) { saveAI(); return; }
       if (t2.closest('[data-tnewcat]')) { readForm(); openCat(null, d.type, cid => { d.category_id = cid; draw(); }); return; }
       if (t2.closest('[data-tnewacct]')) { readForm(); openAcct(null, aid => { d.account_id = aid; draw(); }); return; }
       if (t2.closest('[data-tcopy]')) { readForm(); openTx(Object.assign({}, d), true); return; }

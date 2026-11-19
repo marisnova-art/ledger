@@ -37,3 +37,34 @@ export function parseLine(line, { cats, accts }) {
   cat = cat || pool[0];
   return { date, time, type, amount, description: rest || (meal && type === 'expense' ? meal : '') || (cat ? cat.name : ''), category_id: cat ? cat.id : null, account_id };
 }
+
+// Real AI parse through the ai-parse server function. Returns items in the same shape as parseLine,
+// or null when AI is unavailable (demo, offline, no key, daily limit) so callers keep the local result.
+const aiCache = new Map();
+export function aiParse(text, { sb, cats, accts, now }) {
+  text = (text || '').trim();
+  if (!sb || text.length < 4) return Promise.resolve(null);
+  if (aiCache.has(text)) return aiCache.get(text);
+  const catIds = new Set((cats || []).map(c => c.id)), acctIds = new Set((accts || []).map(a => a.id)), t = todayStr();
+  const p = sb.functions.invoke('ai-parse', { body: {
+    text, today: t, now,
+    categories: (cats || []).filter(c => !c.hidden).map(c => ({ id: c.id, name: c.name, type: c.type })),
+    accounts: (accts || []).map(a => ({ id: a.id, name: a.name, type: a.type }))
+  } }).then(({ data, error }) => {
+    if (error || !data || !Array.isArray(data.items)) return null;
+    const items = data.items.map(it => ({
+      date: /^\d{4}-\d{2}-\d{2}$/.test(it.date) && it.date <= t ? it.date : t,
+      time: /^\d{2}:\d{2}$/.test(it.time) ? it.time : '',
+      type: it.type === 'income' ? 'income' : 'expense',
+      amount: Math.abs(Math.round(Number(it.amount) || 0)),
+      description: String(it.description || '').slice(0, 60),
+      vendor: String(it.vendor || '').slice(0, 40),
+      category_id: catIds.has(it.category_id) ? it.category_id : null,
+      account_id: acctIds.has(it.account_id) ? it.account_id : null
+    })).filter(it => it.amount > 0);
+    return items.length ? items : null;
+  }).catch(() => null);
+  p.then(r => { if (!r) aiCache.delete(text); });
+  aiCache.set(text, p);
+  return p;
+}
