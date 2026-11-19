@@ -41,6 +41,7 @@ export function parseLine(line, { cats, accts }) {
 // Real AI parse through /api/ai-parse (Cloudflare Workers AI). Returns items in the same shape as parseLine,
 // or null when AI is unavailable (demo, offline, no key, daily limit) so callers keep the local result.
 const aiCache = new Map();
+export const aiInfo = { model: '' }; // which model answered last (shown in the entry sheet)
 export function aiParse(text, { sb, cats, accts, now, image }) {
   text = (text || '').trim();
   if (!sb || (!image && text.length < 4)) return Promise.resolve(null);
@@ -55,6 +56,7 @@ export function aiParse(text, { sb, cats, accts, now, image }) {
     }) }).then(r => r.ok ? r.json() : null);
   }).then(data => {
     if (!data || !Array.isArray(data.items)) return null;
+    aiInfo.model = String(data.model || '');
     const items = data.items.map(it => ({
       date: /^\d{4}-\d{2}-\d{2}$/.test(it.date) && it.date <= t ? it.date : t,
       time: /^\d{2}:\d{2}$/.test(it.time) ? it.time : '',
