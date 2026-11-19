@@ -12,7 +12,7 @@ try { theme = localStorage.getItem('ledger.v2.theme') || 'dark'; cur.bookId = lo
 const applyTheme = () => {
   document.documentElement.dataset.theme = theme;
   const light = theme === 'light' || (theme === 'system' && matchMedia('(prefers-color-scheme: light)').matches);
-  document.querySelector('meta[name=theme-color]').setAttribute('content', light ? '#BABCB7' : '#0C0D0B');
+  document.querySelector('meta[name=theme-color]').setAttribute('content', light ? '#F3F0E6' : '#0C0D0B');
 };
 applyTheme();
 matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
@@ -320,12 +320,12 @@ function assetsView() {
 function settingsView() {
   const b = book(), list = cats(V.setKind);
   const cnt = id => bookTx().filter(t => t.category_id === id).length;
-  const seg = [['dark', '다크'], ['light', '라이트 그레이'], ['system', '기기 설정 따라']].map(o => '<button data-theme="' + o[0] + '" aria-pressed="' + (theme === o[0]) + '">' + o[1] + '</button>').join('');
+  const seg = [['dark', '다크'], ['light', '라이트 아이보리'], ['system', '기기 설정 따라']].map(o => '<button data-theme="' + o[0] + '" aria-pressed="' + (theme === o[0]) + '">' + o[1] + '</button>').join('');
   return '<section class="card s5"><div class="card-h"><span class="strong">장부</span><span class="small muted">' + KIND[b.kind] + '</span></div>' +
       '<div class="bookid"><button class="bdot" data-bpick aria-label="아이콘 바꾸기">' + bookIconHtml(b) + '</button><label class="field" style="flex:1"><span>장부 이름</span><input id="bkName" value="' + esc(b.name) + '" maxlength="20"></label></div>' +
       (V.bpick ? '<div class="ipick">' + ['wallet', 'store', 'building', 'house', 'coin', 'card', 'cup', 'people', 'bag', 'heart', 'book', 'trend'].map(k => '<button data-bicon="' + k + '" aria-pressed="' + (!b.image_url && b.icon === k) + '" aria-label="' + k + '">' + icon(k) + '</button>').join('') + '</div><label class="btn-dash" style="cursor:pointer">' + icon('image') + '내 이미지 올리기<input type="file" accept="image/*" id="bImg" hidden></label>' + (b.image_url ? '<button class="btn-ghost" data-bimgclr>기본 아이콘 쓰기</button>' : '')
         : '<p class="small muted hint">아이콘을 누르면 기본 아이콘이나 내 이미지로 바꿀 수 있어요.</p>') + '</section>' +
-    '<section class="card s7"><span class="strong">화면 모드</span><div class="seg">' + seg + '</div><p class="small muted hint">다크는 선명한 포인트 컬러, 라이트 그레이는 눈이 편한 차분한 컬러예요.</p></section>' +
+    '<section class="card s7"><span class="strong">화면 모드</span><div class="seg">' + seg + '</div><p class="small muted hint">다크는 선명한 포인트 컬러, 라이트 아이보리는 밝고 따뜻한 바탕이에요.</p></section>' +
     '<section class="card s8"><div class="card-h"><span class="strong">분류</span><span class="small muted">눌러서 이름·아이콘·숨김·삭제</span></div><div class="seg"><button class="exp" data-skind="expense" aria-pressed="' + (V.setKind === 'expense') + '">나간 돈 ' + cats('expense').length + '</button><button class="inc" data-skind="income" aria-pressed="' + (V.setKind === 'income') + '">들어온 돈 ' + cats('income').length + '</button></div>' +
       '<div>' + list.map(c => '<button class="row' + (c.hidden ? ' hiddenrow' : '') + '" data-cat="' + c.id + '"><span class="ic ' + (c.type === 'income' ? 'inc' : 'exp') + '">' + icon(catIcon(c)) + '</span><span class="mid"><div>' + esc(c.name) + (c.hidden ? ' <span class="tag">숨김</span>' : '') + '</div><div class="small muted">거래 ' + cnt(c.id) + '건</div></span>' + icon('right') + '</button>').join('') + '</div><button class="btn-dash" data-addcat>' + icon('plus') + '새 분류</button></section>' +
     '<section class="card s4"><span class="strong">계좌·카드</span><div>' + accts().map(a => '<button class="row" data-acct="' + a.id + '"><span class="ic">' + icon(acctIcon(a)) + '</span><span class="mid"><div>' + esc(a.name) + '</div><div class="small muted">' + acctLabel(a.type) + ((a.detail || {}).org ? ' · ' + esc(a.detail.org) : '') + ((a.detail || {}).last4 ? ' (' + esc(a.detail.last4) + ')' : '') + (a.initial_balance ? ' · 시작 금액 ' + won(a.initial_balance) : '') + '</div></span>' + icon('right') + '</button>').join('') + '</div><button class="btn-dash" data-addacct>' + icon('plus') + '계좌·카드 추가</button></section>' +

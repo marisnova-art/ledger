@@ -15,11 +15,11 @@
   color-scheme: dark;
 }
 :root[data-theme="light"] {
-  --bg: #BABCB7; --card-base: #D1D3CE; --ink: #141512; --coral: #B5523F; --accent: #A6BE4E; --in: #4F5E1C;
-  --on-accent: #141512; --mixbase: #3A3E35; color-scheme: light;
+  --bg: #F3F0E6; --card-base: #FBF9F2; --ink: #1A1B16; --coral: #C2553F; --accent: #C8E84A; --in: #4E6A10;
+  --on-accent: #1A1B16; --mixbase: #3A3E35; color-scheme: light;
 }
 @media (prefers-color-scheme: light) {
-  :root[data-theme="system"] { --bg: #BABCB7; --card-base: #D1D3CE; --ink: #141512; --coral: #B5523F; --accent: #A6BE4E; --in: #4F5E1C; --on-accent: #141512; --mixbase: #3A3E35; color-scheme: light; }
+  :root[data-theme="system"] { --bg: #F3F0E6; --card-base: #FBF9F2; --ink: #1A1B16; --coral: #C2553F; --accent: #C8E84A; --in: #4E6A10; --on-accent: #1A1B16; --mixbase: #3A3E35; color-scheme: light; }
 }
 @media (max-width: 959px) { :root { --t1: 44px; } }
 
@@ -117,7 +117,7 @@ svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-widt
 .score .bar { position: relative; height: 6px; border-radius: 999px; background: linear-gradient(90deg, #FF6B57, #FFC24B, #C6F432, #45CFF2, #C17BFF); margin-top: auto; }
 .score .marker { position: absolute; top: -5px; width: 2px; height: 16px; border-radius: 2px; background: var(--ink); }
 .score .big { font-size: var(--t1); font-weight: 400; line-height: 1.05; }
-:root[data-theme="light"] .score .bar { filter: saturate(.55) brightness(.92); }
+:root[data-theme="light"] .score .bar { filter: saturate(.75) brightness(.95); }
 :root[data-theme="light"] .score .glow { filter: saturate(.55) blur(28px); }
 
 /* chart */
