@@ -6,7 +6,7 @@ import { uid, todayStr } from './util.js';
 const TABLES = ['v2_categories', 'v2_accounts', 'v2_recurring', 'v2_transactions', 'v2_assets'];
 export const S = {
   sb: null, user: null, demo: false,
-  books: [], cats: [], accts: [], recs: [], txs: [], assets: [], snaps: [], trash: []
+  books: [], cats: [], accts: [], recs: [], txs: [], assets: [], snaps: [], trash: [], trashItems: []
 };
 
 export async function initClient() {
@@ -41,20 +41,26 @@ export async function loadAll() {
   const ids = books.map(b => b.id);
   const [cats, accts, recs, txs, assets] = await Promise.all(TABLES.map(t => {
     let q = S.sb.from(t).select('*').in('book_id', ids);
-    if (t === 'v2_transactions') q = q.is('deleted_at', null).order('date', { ascending: false }).range(0, 9999);
+    q = q.is('deleted_at', null);
+    if (t === 'v2_transactions') q = q.order('date', { ascending: false }).range(0, 9999);
     return q.then(must);
   }));
   const snaps = assets.length ? must(await S.sb.from('v2_asset_snapshots').select('*').in('asset_id', assets.map(a => a.id))) : [];
   const trash = must(await S.sb.from('v2_transactions').select('*').in('book_id', ids).not('deleted_at', 'is', null).order('deleted_at', { ascending: false }).range(0, 499));
-  Object.assign(S, { books, cats, accts, recs, txs, assets, snaps, trash });
+  const soft = ['v2_categories', 'v2_accounts', 'v2_recurring', 'v2_assets'];
+  const gone = await Promise.all(soft.map(t => S.sb.from(t).select('*').in('book_id', ids).not('deleted_at', 'is', null).then(must)));
+  const trashItems = []; gone.forEach((rows, k) => rows.forEach(row => trashItems.push({ table: soft[k], row })));
+  Object.assign(S, { books, cats, accts, recs, txs, assets, snaps, trash, trashItems });
 }
 
+const SOFT = ['v2_categories', 'v2_accounts', 'v2_recurring', 'v2_assets'];
 const KEY = { v2_books: 'books', v2_categories: 'cats', v2_accounts: 'accts', v2_recurring: 'recs', v2_transactions: 'txs', v2_assets: 'assets' };
 
 // Optimistic write: update memory first, then the server. Returns a promise that rejects on server error.
 export async function put(table, row) {
   const list = S[KEY[table]];
   if (table === 'v2_transactions' && !row.deleted_at) { const k = S.trash.findIndex(x => x.id === row.id); if (k >= 0) S.trash.splice(k, 1); }
+  if (SOFT.includes(table)) { const k = S.trashItems.findIndex(x => x.table === table && x.row.id === row.id); if (k >= 0) S.trashItems.splice(k, 1); row = Object.assign({}, row, { deleted_at: null }); }
   const i = list.findIndex(x => x.id === row.id);
   if (i >= 0) list[i] = row; else list.push(row);
   if (S.demo) return row;
@@ -73,9 +79,11 @@ export async function remove(table, id) {
   const list = S[KEY[table]];
   const i = list.findIndex(x => x.id === id);
   const gone = i >= 0 ? list.splice(i, 1)[0] : null;
-  if (table === 'v2_transactions' && gone) S.trash.unshift(Object.assign({}, gone, { deleted_at: new Date().toISOString() }));
+  const now = new Date().toISOString();
+  if (table === 'v2_transactions' && gone) S.trash.unshift(Object.assign({}, gone, { deleted_at: now }));
+  if (SOFT.includes(table) && gone) S.trashItems.unshift({ table, row: Object.assign({}, gone, { deleted_at: now }) });
   if (S.demo) return;
-  if (table === 'v2_transactions') must(await S.sb.from(table).update({ deleted_at: new Date().toISOString() }).eq('id', id).select());
+  if (table === 'v2_transactions' || SOFT.includes(table)) must(await S.sb.from(table).update({ deleted_at: now }).eq('id', id).select());
   else must(await S.sb.from(table).delete().eq('id', id).select());
 }
 // Trash: deleted transactions stay on the server with deleted_at set; restore clears it, purge removes the row for good.
@@ -88,6 +96,15 @@ export async function purgeTx(id) {
   if (S.demo || !t) return t;
   must(await S.sb.from('v2_transactions').delete().eq('id', id).select());
   return t;
+}
+export async function restoreItem(table, id) {
+  const it = S.trashItems.find(x => x.table === table && x.row.id === id); if (!it) return;
+  await put(table, Object.assign({}, it.row, { deleted_at: null }));
+}
+export async function purgeItem(table, id) {
+  const k = S.trashItems.findIndex(x => x.table === table && x.row.id === id); if (k >= 0) S.trashItems.splice(k, 1);
+  if (S.demo) return;
+  must(await S.sb.from(table).delete().eq('id', id).select());
 }
 export async function putSnap(snap) {
   const i = S.snaps.findIndex(x => x.asset_id === snap.asset_id && x.date === snap.date);

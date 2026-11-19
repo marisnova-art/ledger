@@ -1,5 +1,5 @@
 /* LEDGER v2 — one responsive app.
-   PC (>= 960px): left sidebar + top bar + 12-column bento, content max 1320px.
+   PC (>= 960px): left sidebar + top bar + 12-column bento, content max 1200px.
    Mobile (< 960px): sticky header, one column, bottom tab bar with a centre add button, bottom sheets.
    Owner rules: 3 type sizes, ~5 colours (bg, card, ink, accent, coral). Dark = neon accent; light = mid-light gray with muted accent.
    No coloured left bars, no collapsible lists, no scroll boxes inside cards. Theme switch lives only in Settings. */
@@ -64,7 +64,7 @@ svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-widt
 .side .foot { margin-top: auto; padding: 0 8px; }
 
 .main { min-width: 0; padding: 0 32px 64px; }
-.topbar, .view { max-width: 1320px; margin-left: auto; margin-right: auto; }
+.topbar, .view { max-width: 1200px; margin-left: auto; margin-right: auto; }
 .topbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px; padding: 20px 0 16px; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 .topbar .title { font-weight: 700; margin-right: auto; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .topbar .title > span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -240,7 +240,7 @@ button.tx:hover { background: var(--soft); }
   .stats { grid-template-columns: 1fr 1fr; gap: 14px 12px; }
   .stats.four { grid-template-columns: 1fr 1fr; }
   .stats.three > div:nth-child(3) { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; }
-  .m1 { order: 1; } .m2 { order: 2; } .m3 { order: 3; } .m4 { order: 4; } .m5 { order: 5; } .m6 { order: 6; } .m7 { order: 7; }
+  .m1 { order: 1; } .m2 { order: 2; } .m3 { order: 3; } .m4 { order: 4; } .m5 { order: 5; } .m6 { order: 6; } .m7 { order: 7; } .m8 { order: 8; } .m9 { order: 9; }
   .search.m { width: 100%; background: var(--card); }
   .tabbar { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); }
   .tabbar .inner { max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; }
@@ -292,3 +292,21 @@ button.tx:hover { background: var(--soft); }
 .ctip span { display: flex; align-items: center; gap: 6px; }
 .ctip i { width: 8px; height: 8px; border-radius: 99px; display: inline-block; }
 .ctip span b { margin-left: auto; padding-left: 12px; }
+/* PC: wide two-column transaction dialog (no scroll); mobile keeps the bottom sheet */
+.tx2 { display: flex; flex-direction: column; gap: 14px; }
+.tx2 .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+@media (min-width: 960px) {
+  .sheet.wide { width: min(920px, calc(100vw - 48px)); padding: 26px 28px; }
+  .sheet.wide .tx2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+}
+/* spending / income composition */
+.comp { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 24px; align-items: center; }
+.comp svg { width: 180px; height: 180px; }
+.clist { display: flex; flex-direction: column; }
+.crow { display: flex; align-items: center; gap: 10px; min-height: 40px; border-bottom: 1px solid var(--line); text-align: left; }
+.crow:last-child { border-bottom: 0; }
+.crow i { width: 10px; height: 10px; border-radius: 99px; flex: none; }
+.crow .mid { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crow b { font-weight: 600; }
+.crow .small { width: 40px; text-align: right; }
+@media (max-width: 959px) { .comp { grid-template-columns: minmax(0, 1fr); justify-items: center; } .clist { width: 100%; } }
