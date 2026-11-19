@@ -404,7 +404,7 @@ button.tx.r-out:hover { background: color-mix(in srgb, var(--coral) 10%, transpa
   .mhead { margin: 0 -8px; padding-left: 14px; padding-right: 14px; }
   .pills.scroll { margin: 0 -8px; padding: 2px 8px; }
   .hstrip { margin: 0 -8px; padding: 0 8px 4px; }
-  .card { padding: 18px 14px; }
+  .card { padding: 18px 14px; --cpy: 18px; --cpx: 14px; }
   .hero.s12 { padding: 22px 18px; }
   .tx { gap: 10px; padding: 6px 2px; }
   .tx .ic { width: 34px; height: 34px; }
@@ -564,10 +564,11 @@ html, body { overscroll-behavior: none; }
   .lt { padding: 12px 14px; }
 }
 
-/* card titles: one look on every page (icon badge + title) */
-.ct { display: inline-flex; align-items: center; gap: 10px; }
-.cti { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--in); }
-.cti svg.i { width: 17px; height: 17px; }
-.card > .ct, .card > .card-h { margin-bottom: 6px; }
-.card > .ct { display: flex; }
+/* card titles: one look on every page — a tinted header band with a divider (user 2026-11-19) */
+.card { --cpy: 26px; --cpx: 26px; --cr: 24px; }
+.ct { display: inline-flex; align-items: baseline; gap: 8px; }
+.card:not(.hero) > .card-h:first-child, .card:not(.hero) > .ct:first-child, .card.score > .glow + .card-h {
+  display: flex; margin: calc(-1 * var(--cpy)) calc(-1 * var(--cpx)) 4px; padding: 16px var(--cpx); min-height: 60px;
+  background: color-mix(in srgb, var(--ink) 4%, transparent); border-bottom: 1px solid var(--line); border-radius: var(--cr) var(--cr) 0 0; }
+@media (max-width: 959px) { .card { --cpy: 18px; --cpx: 14px; --cr: 20px; } }
 .card-h > .ct { min-width: 0; }
