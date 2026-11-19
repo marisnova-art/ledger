@@ -1,4 +1,5 @@
 // Small shared helpers: icons, money/date formatting, ids, category icon matching.
+import { CI } from './icons.js';
 export const P = {
   wallet: 'M3 7h15a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7zm0 0V6a2 2 0 0 1 2-2h11M16 14h2',
   store: 'M3 9l2-5h14l2 5M4 9v11h16V9M3 9h18M9 20v-6h6v6',
@@ -54,7 +55,7 @@ export const P = {
   undo: 'M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3',
   cash: 'M3 7h18v10H3zM12 15a3 3 0 1 0 0-6a3 3 0 0 0 0 6z'
 };
-export const icon = (k, cls) => '<svg class="i' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + (P[k] || P.tag) + '"/></svg>';
+export const icon = (k, cls) => '<svg class="i' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + (CI[k] ? CI[k][0] : P[k] || P.tag) + '"/></svg>';
 
 export const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 export const won = n => (n < 0 ? '−' : '') + Math.abs(Math.round(n)).toLocaleString('ko-KR') + '원';
@@ -85,18 +86,33 @@ export const WD = ['일', '월', '화', '수', '목', '금', '토'];
 export const weekday = d => WD[new Date(d + 'T00:00:00Z').getUTCDay()];
 export const shortDate = d => d.slice(5).replace('-', '.');
 
-// Category / account icon matching by name (stand-in for the planned "AI picks from the icon set").
-const ICON_RULES = [
-  [/카페|커피|스타벅스|음료/, 'cup'], [/식비|식사|외식|배달|간식|마트|장보기|편의점|음식/, 'food'], [/쇼핑|생활|생필품|잡화/, 'bag'],
-  [/교통|택시|버스|지하철|주유|차량|자동차|주차/, 'bus'], [/주거|월세|관리비|임대|집|공과금|전기|가스|수도/, 'house'],
-  [/구독|넷플릭스|유튜브|멤버십|정기/, 'repeat'], [/급여|월급|수입|용돈|이자|배당|환급|판매|부수입|중고|당근/, 'coin'],
-  [/통신|휴대폰|핸드폰|인터넷/, 'phone'], [/의료|병원|약|건강/, 'med'], [/교육|학원|강의|책|도서/, 'edu'],
-  [/여행|항공|숙박/, 'plane'], [/선물|경조|축의|부조/, 'gift'], [/취미|게임|오락|문화|영화/, 'game'], [/반려|애완|강아지|고양이/, 'pet'],
-  [/의류|옷|패션|미용|화장품/, 'shirt'], [/보험|세금|카드|대출|이체/, 'card'], [/기부|헌금|후원|감사/, 'heart'], [/전기|에너지/, 'bolt']
-];
+// Category icon matching by name: score every library icon by its Korean keywords.
+// (Stand-in for the planned AI pick; same interface so AI can replace it later.)
+const CI_TAGS = Object.keys(CI).map(k => [k, CI[k][2].toLowerCase().split(' ')]);
+export function suggestIcons(name, n = 3) {
+  const q = String(name || '').toLowerCase().replace(/\s+/g, '');
+  if (!q) return [];
+  const sc = [];
+  for (const [k, tags] of CI_TAGS) {
+    let best = 0;
+    tags.forEach((t, i) => {
+      let v = 0;
+      if (q === t) v = 100;
+      else if (q.includes(t)) v = 20 + t.length * 4;
+      else if (q.length >= 2 && t.startsWith(q)) v = 10 + q.length * 3;
+      else if (q.length >= 2 && t.includes(q)) v = 6 + q.length * 2;
+      if (v) v -= i * 0.5;
+      if (v > best) best = v;
+    });
+    if (best > 0) sc.push([k, best]);
+  }
+  const out = sc.sort((x, y) => y[1] - x[1]).slice(0, n).map(x => x[0]);
+  // Fill up to n with neighbours from the best match's group so there is always a choice.
+  if (out.length && out.length < n) for (const k of Object.keys(CI)) { if (out.length >= n) break; if (CI[k][1] === CI[out[0]][1] && !out.includes(k)) out.push(k); }
+  return out;
+}
 export function iconForName(name, fallback) {
-  for (const [re, k] of ICON_RULES) if (re.test(name || '')) return k;
-  return fallback || 'tag';
+  return suggestIcons(name, 1)[0] || (fallback == null ? 'tag' : fallback);
 }
 export const ACCT_TYPES = [['bank', '입출금 통장', 'bank'], ['saving', '저축 통장', 'coin'], ['check', '체크카드', 'card'], ['card', '신용카드', 'card'], ['cash', '현금', 'cash'], ['pay', '간편결제', 'phone']];
 export const acctLabel = t => (ACCT_TYPES.find(x => x[0] === t) || [t, t || '기타'])[1];

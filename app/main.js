@@ -1,7 +1,8 @@
 // LEDGER v2 — app entry: sign-in, layout (PC sidebar / mobile tab bar), views and edit sheets.
 import { CONFIG } from './config.js';
 import { S, initClient, signIn, signOut, loadAll, loadDemo, put, putMany, remove, putSnap, restoreTx, purgeTx, restoreItem, purgeItem } from './store.js';
-import { icon, esc, won, signed, man, uid, todayStr, nowTime, ym, addMonths, addDays, monthLabel, weekday, shortDate, iconForName, acctIcon, acctLabel, ACCT_TYPES } from './util.js';
+import { CI, CI_GROUPS } from './icons.js';
+import { icon, esc, suggestIcons, won, signed, man, uid, todayStr, nowTime, ym, addMonths, addDays, monthLabel, weekday, shortDate, iconForName, acctIcon, acctLabel, ACCT_TYPES } from './util.js';
 import { cur, book, bookTx, sumOf, cats, accts, recs, assets, catOf, acctOf, monthSum, monthTx, series, score, outlook, recThisMonth, dueDate, recDone, computeAlerts, dismiss, markSeen, ASSET_TYPES, assetLabel, assetIcon, signedVal, netWorthAt } from './calc.js';
 import { parseLine } from './ai.js';
 
@@ -542,19 +543,24 @@ function openTx(t, copy) {
 }
 
 /* category add / edit (with move-on-delete) */
-const PICK_ICONS = ['cup', 'food', 'bag', 'bus', 'house', 'repeat', 'coin', 'wallet', 'card', 'phone', 'med', 'edu', 'plane', 'gift', 'game', 'pet', 'shirt', 'heart', 'bolt', 'people', 'receipt', 'box', 'trend', 'tag'];
+const icBtn = (k, on) => '<button data-cic="' + k + '" aria-pressed="' + (k === on) + '" aria-label="' + esc(CI[k] ? CI[k][2].split(' ')[0] : k) + '">' + icon(k) + '</button>';
+const sugRow = (name, on) => { const s = suggestIcons(name); return s.length ? s.map(k => icBtn(k, on)).join('') : '<span class="small muted">이름을 적으면 어울리는 아이콘 3개를 골라 드려요</span>'; };
+const allIcons = on => CI_GROUPS.map(g => '<div class="igrp"><span class="small muted">' + g + '</span><div class="ipick">' + Object.keys(CI).filter(k => CI[k][1] === g).map(k => icBtn(k, on)).join('') + '</div></div>').join('');
 function openCat(id, type, after) {
   const c = id ? Object.assign({}, catOf(id)) : { id: uid(), book_id: book().id, name: '', type: type || V.setKind, color: null, icon: null, hidden: false, sort: cats(type || V.setKind).length + 1 };
   let ic = c.icon || null;
+  const curName = () => { const el = document.getElementById('cName'); return el ? el.value : c.name; };
+  const curIc = () => ic || iconForName(curName(), '');
   const n = id ? bookTx().filter(t => t.category_id === id).length : 0;
   const draw = () => sheet(id ? '분류 고치기' : '새 분류 (' + (c.type === 'income' ? '들어온 돈' : '나간 돈') + ')',
     '<label class="field"><span>이름</span><input id="cName" value="' + esc(c.name) + '" maxlength="14" placeholder="예: 반려동물" autofocus></label>' +
-    '<div class="field"><span>아이콘 ' + (ic ? '' : '(이름에 맞게 자동)') + '</span><div class="ipick">' + PICK_ICONS.map(k => '<button data-cic="' + k + '" aria-pressed="' + ((ic || iconForName(document.getElementById('cName') ? document.getElementById('cName').value : c.name, '')) === k) + '" aria-label="' + k + '">' + icon(k) + '</button>').join('') + '</div></div>' +
+    '<div class="field"><span>추천 아이콘' + (ic ? '' : ' (이름에 맞게 자동)') + '</span><div class="ipick isug" id="cSug">' + sugRow(curName(), curIc()) + '</div></div>' +
+    '<div class="field"><span>전체 아이콘</span>' + allIcons(curIc()) + '</div>' +
     (id ? '<div class="row"><span class="mid"><div>입력할 때 숨기기</div><div class="small muted">지난 거래는 그대로 남아요</div></span><button class="switch" role="switch" aria-label="숨기기" aria-checked="' + !!c.hidden + '" data-chide></button></div><div class="acts"><button class="btn-line danger" data-cdel>삭제</button><button class="save" data-csave>저장</button></div>' : '<button class="save" data-csave>추가</button>'), {
-    input: e => { if (e.target.id === 'cName' && !ic) { const k = iconForName(e.target.value, ''); layer.querySelectorAll('[data-cic]').forEach(b => b.setAttribute('aria-pressed', b.dataset.cic === k)); } },
+    input: e => { if (e.target.id !== 'cName') return; const on = curIc(); document.getElementById('cSug').innerHTML = sugRow(e.target.value, on); layer.querySelectorAll('[data-cic]').forEach(b => b.setAttribute('aria-pressed', b.dataset.cic === on)); },
     click: async e => {
       const t = e.target;
-      const b = t.closest('[data-cic]'); if (b) { ic = b.dataset.cic; pick('cic', b); return; }
+      const b = t.closest('[data-cic]'); if (b) { ic = b.dataset.cic; layer.querySelectorAll('[data-cic]').forEach(x => x.setAttribute('aria-pressed', x.dataset.cic === ic)); return; }
       const sw = t.closest('[data-chide]'); if (sw) { sw.setAttribute('aria-checked', sw.getAttribute('aria-checked') !== 'true'); return; }
       if (t.closest('[data-csave]')) {
         const name = document.getElementById('cName').value.trim(); if (!name) { document.getElementById('cName').focus(); return; }

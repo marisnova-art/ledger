@@ -496,3 +496,9 @@ html, body { overscroll-behavior: none; }
 .hero.s12 .hl > .hacc { margin: 14px 0 0; }
 .hero.s12 .hcap + .stats, .hero.s12 .hacc + .stats { margin-top: 20px; padding-top: 16px; }
 @media (max-width: 959px) { .hero.s12 .hl > .hacc { gap: 6px; } .hero.s12 .hl > .hacc .hac { min-height: 34px; padding: 0 10px; } .hero.s12 .stats .lbl { font-size: 12px; } }
+
+/* Category icon picker: suggestions + grouped library */
+.igrp { display: grid; gap: 6px; margin-top: 10px; }
+.igrp:first-of-type { margin-top: 2px; }
+.isug { min-height: 44px; align-items: center; }
+.isug > span { grid-column: 1 / -1; }
