@@ -9,11 +9,20 @@ const MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct'; // text + image, JSON m
 const SUPABASE_URL = 'https://wpakjtlyfxwnrsuxkyjv.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_kw1ZI6jTAnvQqKGUUYIZVA_v7jRZjfl'; // public key; RLS protects data
 const DAILY_LIMIT = 50;
-const GEMINI_DEFAULT = 'gemini-flash-latest';
+// Tried in order; a busy (503), missing (404) or rate-limited (429) model moves on to the next one.
+const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
 
-// Gemini REST call. Returns parsed {items} or throws (so the caller can fall back).
 async function gemini(env, system, text, img) {
-  const model = env.GEMINI_MODEL || GEMINI_DEFAULT;
+  const list = env.GEMINI_MODEL ? [env.GEMINI_MODEL, ...GEMINI_MODELS.filter(m => m !== env.GEMINI_MODEL)] : GEMINI_MODELS;
+  const errs = [];
+  for (const m of list) {
+    try { return await geminiOne(env, m, system, text, img); }
+    catch (e) { errs.push(String(e && e.message || e)); if (!/http (503|404|429|500)/.test(String(e && e.message))) break; }
+  }
+  throw new Error(errs.join(' / '));
+}
+// One Gemini REST call. Returns parsed {items} or throws (so the caller can try the next model).
+async function geminiOne(env, model, system, text, img) {
   const parts = [{ text }];
   if (img) parts.push({ inline_data: { mime_type: 'image/jpeg', data: img } });
   const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
