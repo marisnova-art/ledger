@@ -416,3 +416,6 @@ button.tx.r-out:hover { background: color-mix(in srgb, var(--coral) 10%, transpa
 html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (max-width: 959px) { input, select, textarea { font-size: 16px; } }
 .hero.s12 .hmore + .stats { margin-top: 22px; }
+.dayband { margin-bottom: 6px; }
+.mband { margin-bottom: 8px; }
+@media (max-width: 959px) { .dayband { margin-top: 16px; margin-bottom: 8px; } }
