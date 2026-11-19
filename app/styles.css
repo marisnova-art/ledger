@@ -563,3 +563,11 @@ html, body { overscroll-behavior: none; }
   .lt.net { grid-column: 1 / -1; }
   .lt { padding: 12px 14px; }
 }
+
+/* card titles: one look on every page (icon badge + title) */
+.ct { display: inline-flex; align-items: center; gap: 10px; }
+.cti { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--in); }
+.cti svg.i { width: 17px; height: 17px; }
+.card > .ct, .card > .card-h { margin-bottom: 6px; }
+.card > .ct { display: flex; }
+.card-h > .ct { min-width: 0; }
