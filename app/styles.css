@@ -428,3 +428,6 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adj
   .hero.s12 .stats .lbl { gap: 4px; }
   .hero.s12 .stats .v, .chart .cstats .v { font-size: var(--t3); }
 }
+/* Transaction rows: rounded boxes with a gap on PC too (same look as mobile) */
+.tx.r-in, .tx.r-out { min-height: 66px; padding: 10px 14px; margin-bottom: 6px; border-bottom: 0; border-radius: 14px; }
+.dayband { margin-top: 18px; margin-bottom: 8px; }

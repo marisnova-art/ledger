@@ -128,7 +128,7 @@ function heroTiles(m) {
   const mx = Math.max(1, ...cn, ...cp), W = 220, H = 56, X = i => (i / Math.max(1, dim - 1)) * W, Y = v => H - 3 - (v / mx) * (H - 8);
   const path = a => a.map((v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1)).join('');
   const sameDay = cp[Math.min(cp.length, cn.length) - 1] || 0, nowV = cn[cn.length - 1] || 0, dd = nowV - sameDay;
-  out.push(tile('지출 흐름', (dd > 0 ? '지난달보다 ' + won(dd) + ' 더 씀' : dd < 0 ? '지난달보다 ' + won(-dd) + ' 덜 씀' : '지난달과 같아요'),
+  out.push(tile('지출 흐름 · 지난달 같은 날 대비', (dd > 0 ? won(dd) + ' 더 씀' : dd < 0 ? won(-dd) + ' 덜 씀' : '같아요'),
     '<svg class="hviz" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><path d="' + path(cp) + '" fill="none" stroke="currentColor" stroke-opacity=".3" stroke-width="2" vector-effect="non-scaling-stroke"/><path d="' + path(cn) + '" fill="none" stroke="currentColor" stroke-width="2.5" vector-effect="non-scaling-stroke"/>' + (cn.length ? '<circle cx="' + X(cn.length - 1) + '" cy="' + Y(nowV) + '" r="3.5" fill="currentColor"/>' : '') + '</svg>'));
   // 2. per-day money
   const bars = (rows) => { const top = Math.max(1, ...rows.map(r => r[1])); return '<div class="hbars">' + rows.map(r => '<div class="hb"><span class="small">' + r[0] + '</span><i><b style="width:' + Math.round(r[1] / top * 100) + '%"></b></i><span class="small">' + man(r[1]) + '</span></div>').join('') + '</div>'; };
