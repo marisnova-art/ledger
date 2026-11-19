@@ -93,7 +93,10 @@ export function loadDemo() {
   S.accts = [{ id: 'a1', book_id: B, name: '주거래 통장', type: 'bank', initial_balance: 0, sort: 1 }, { id: 'a2', book_id: B, name: '현금', type: 'cash', initial_balance: 0, sort: 2 }];
   const t = todayStr(), m = t.slice(0, 7);
   S.recs = [{ id: 'r1', book_id: B, name: '넷플릭스', type: 'expense', amount: 17000, amount_type: 'fixed', freq: 'monthly', day: 16, next_date: null, active: true, category_id: 'c6', account_id: 'a1', log: [] },
-    { id: 'r2', book_id: B, name: '급여', type: 'income', amount: 2450000, amount_type: 'fixed', freq: 'monthly', day: 10, next_date: null, active: true, category_id: 'c7', account_id: 'a1', log: [] }];
+    { id: 'r2', book_id: B, name: '급여', type: 'income', amount: 2450000, amount_type: 'fixed', freq: 'monthly', day: 10, next_date: null, active: true, category_id: 'c7', account_id: 'a1', log: [] },
+    { id: 'r3', book_id: B, name: '휴대폰 요금', type: 'expense', amount: 33550, amount_type: 'variable', freq: 'monthly', day: 25, next_date: null, active: true, category_id: 'c5', account_id: 'a1', log: [] },
+    { id: 'r4', book_id: B, name: '관리비', type: 'expense', amount: 180000, amount_type: 'variable', freq: 'monthly', day: 28, next_date: null, active: true, category_id: 'c5', account_id: 'a1', log: [] },
+    { id: 'r5', book_id: B, name: '쿠팡 와우멤버십', type: 'expense', amount: 7890, amount_type: 'fixed', freq: 'monthly', day: 29, next_date: null, active: true, category_id: 'c6', account_id: 'a1', log: [] }];
   const T = (d, desc, cat, type, amount, extra) => Object.assign({ id: uid(), book_id: B, date: d, time: '12:00', type, amount, description: desc, vendor: desc, memo: null, category_id: cat, account_id: 'a1', recurring_id: null }, extra || {});
   const months = [-5, -4, -3, -2, -1, 0].map(k => { const [y, mo] = m.split('-').map(Number); const dt = new Date(Date.UTC(y, mo - 1 + k, 1)); return dt.toISOString().slice(0, 7); });
   S.txs = [];
