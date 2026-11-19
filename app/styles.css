@@ -525,3 +525,5 @@ html, body { overscroll-behavior: none; }
 .lb-acts { display: flex; gap: 8px; }
 .lb-acts .btn-line { display: inline-flex; align-items: center; gap: 6px; padding: 0 20px; color: #fff; border-color: rgba(255,255,255,.3); background: rgba(255,255,255,.08); }
 .rc-acts .btn-line, .rc-add { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; white-space: nowrap; width: auto; }
+
+.rsum { margin-top: 12px; display: grid; gap: 4px; }
